@@ -1,0 +1,187 @@
+# 7 A Model Workflow
+## 7.1 WHERE DOES THE MODEL BEGIN AND END?
+## 7.2 WORKFLOW BASICS
+
+```{r}
+library(tidymodels)  # Includes the workflows package
+tidymodels_prefer()
+
+lm_model <- 
+  linear_reg() %>% 
+  set_engine("lm")
+
+data(ames)
+ames <- mutate(ames, Sale_Price = log10(Sale_Price))
+
+set.seed(502)
+ames_split <- initial_split(ames, prop = 0.80, strata = Sale_Price)
+ames_train <- training(ames_split)
+ames_test  <-  testing(ames_split)
+```
+
+```{r}
+lm_wflow <- 
+  workflow() %>% 
+  add_model(lm_model)
+
+lm_wflow
+```
+
+```{r}
+lm_wflow <- 
+  lm_wflow %>% 
+  add_formula(Sale_Price ~ Longitude + Latitude)
+
+lm_wflow
+```
+
+```{r}
+lm_fit <- fit(lm_wflow, ames_train)
+lm_fit
+```
+
+```{r}
+predict(lm_fit, ames_test %>% slice(1:3))
+```
+
+```{r}
+lm_fit %>% update_formula(Sale_Price ~ Longitude)
+```
+
+## 7.3 ADDING RAW VARIABLES TO THE `workflow()`
+
+```{r}
+lm_wflow <- 
+  lm_wflow %>% 
+  remove_formula() %>% 
+  add_variables(outcome = Sale_Price, predictors = c(Longitude, Latitude))
+lm_wflow
+```
+
+```{r, eval = FALSE}
+lm_wflow <- 
+  lm_wflow %>% 
+  remove_formula() %>% 
+  add_variables(outcome = Sale_Price, predictors = c(ends_with("tude")))
+lm_wflow
+```
+
+```{r}
+fit(lm_wflow, ames_train)
+```
+
+## 7.4 HOW DOES A workflow() USE THE FORMULA?
+### 7.4.1 SPECIAL FORMULAS AND INLINE FUNCTIONS
+
+```{r}
+library(lme4)
+data(Orthodont, package = "nlme")
+lmer(distance ~ Sex + (age | Subject), data = Orthodont)
+```
+
+```{r}
+model.matrix(distance ~ Sex + (age | Subject), data = Orthodont)
+```
+
+```{r}
+library(multilevelmod)
+
+multilevel_spec <- linear_reg() %>% set_engine("lmer")
+
+multilevel_workflow <- 
+  workflow() %>% 
+  # Pass the data along as-is: 
+  add_variables(outcome = distance, predictors = c(Sex, age, Subject)) %>% 
+  add_model(multilevel_spec, 
+            # This formula is given to the model
+            formula = distance ~ Sex + (age | Subject))
+
+multilevel_fit <- fit(multilevel_workflow, data = Orthodont)
+multilevel_fit
+```
+
+```{r}
+library(censored)
+
+parametric_spec <- survival_reg()
+
+parametric_workflow <- 
+  workflow() %>% 
+  add_variables(outcome = c(fustat, futime), predictors = c(age, rx)) %>% 
+  add_model(parametric_spec, 
+            formula = Surv(futime, fustat) ~ age + strata(rx))
+
+parametric_fit <- fit(parametric_workflow, data = ovarian)
+parametric_fit
+```
+
+## 7.5 CREATING MULTIPLE WORKFLOWS AT ONCE
+
+```{r}
+location <- list(
+  longitude = Sale_Price ~ Longitude,
+  latitude = Sale_Price ~ Latitude,
+  coords = Sale_Price ~ Longitude + Latitude,
+  neighborhood = Sale_Price ~ Neighborhood
+)
+```
+
+```{r}
+library(workflowsets)
+location_models <- workflow_set(preproc = location, models = list(lm = lm_model))
+location_models
+
+location_models$info[[1]]
+
+extract_workflow(location_models, id = "coords_lm")
+```
+
+```{r}
+location_models <-
+   location_models %>%
+   mutate(fit = map(info, ~ fit(.x$workflow[[1]], ames_train)))
+location_models
+
+location_models$fit[[1]]
+```
+
+## 7.6 EVALUATING THE TEST SET
+
+```{r}
+final_lm_res <- last_fit(lm_wflow, ames_split)
+final_lm_res
+```
+
+```{r}
+fitted_lm_wflow <- extract_workflow(final_lm_res)
+fitted_lm_wflow 
+```
+
+```{r}
+collect_metrics(final_lm_res)
+collect_predictions(final_lm_res) %>% slice(1:5)
+```
+
+## 7.7 CHAPTER SUMMARY
+
+```{r}
+library(tidymodels)
+data(ames)
+
+ames <- mutate(ames, Sale_Price = log10(Sale_Price))
+
+set.seed(502)
+ames_split <- initial_split(ames, prop = 0.80, strata = Sale_Price)
+ames_train <- training(ames_split)
+ames_test  <-  testing(ames_split)
+
+lm_model <- linear_reg() %>% set_engine("lm")
+
+lm_wflow <- 
+  workflow() %>% 
+  add_model(lm_model) %>% 
+  add_variables(outcome = Sale_Price, predictors = c(Longitude, Latitude))
+
+lm_fit <- fit(lm_wflow, ames_train)
+```
+
