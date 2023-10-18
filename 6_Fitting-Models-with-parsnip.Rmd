@@ -1,0 +1,153 @@
+# 6 Fitting Models with parsnip
+## 6.1 CREATE A MODEL
+
+```{r}
+library(tidymodels)
+tidymodels_prefer()
+
+linear_reg() %>% set_engine("lm")
+
+
+linear_reg() %>% set_engine("glmnet") 
+
+
+linear_reg() %>% set_engine("stan")
+```
+
+```{r}
+linear_reg() %>% set_engine("lm") %>% translate()
+
+linear_reg(penalty = 1) %>% set_engine("glmnet") %>% translate()
+
+linear_reg() %>% set_engine("stan") %>% translate()
+```
+
+```{r}
+data(ames, package = "modeldata")
+ames <- ames %>% mutate(Sale_Price = log10(Sale_Price))
+
+set.seed(502)
+ames_split <- initial_split(ames, prop = 0.80, strata = Sale_Price)
+ames_train <- training(ames_split)
+ames_test  <-  testing(ames_split)
+
+lm_model <- 
+  linear_reg() %>% 
+  set_engine("lm")
+
+lm_form_fit <- 
+  lm_model %>% 
+  # Recall that Sale_Price has been pre-logged
+  fit(Sale_Price ~ Longitude + Latitude, data = ames_train)
+
+lm_xy_fit <- 
+  lm_model %>% 
+  fit_xy(
+    x = ames_train %>% select(Longitude, Latitude),
+    y = ames_train %>% pull(Sale_Price)
+  )
+
+lm_form_fit
+
+lm_xy_fit
+```
+
+```{r}
+rand_forest(trees = 1000, min_n = 5) %>% 
+  set_engine("ranger") %>% 
+  set_mode("regression") %>% 
+  translate()
+```
+
+```{r}
+rand_forest(trees = 1000, min_n = 5) %>% 
+  set_engine("ranger", verbose = TRUE) %>% 
+  set_mode("regression") 
+```
+
+## 6.2 USE THE MODEL RESULTS
+
+```{r}
+lm_form_fit %>% extract_fit_engine()
+```
+
+```{r}
+lm_form_fit %>% extract_fit_engine() %>% vcov()
+```
+
+```{r}
+model_res <- 
+  lm_form_fit %>% 
+  extract_fit_engine() %>% 
+  summary()
+```
+
+```{r}
+param_est <- coef(model_res)
+class(param_est)
+```
+
+```{r}
+param_est
+```
+
+```{r}
+tidy(lm_form_fit)
+```
+
+## 6.3 MAKE PREDICTIONS
+
+```{r}
+ames_test_small <- ames_test %>% slice(1:5)
+predict(lm_form_fit, new_data = ames_test_small)
+```
+
+```{r}
+ames_test_small %>% 
+  select(Sale_Price) %>% 
+  bind_cols(predict(lm_form_fit, ames_test_small)) %>% 
+  # Add 95% prediction intervals to the results:
+  bind_cols(predict(lm_form_fit, ames_test_small, type = "pred_int")) 
+```
+
+```{r}
+tree_model <- 
+  decision_tree(min_n = 2) %>% 
+  set_engine("rpart") %>% 
+  set_mode("regression")
+```
+
+```{r}
+tree_fit <- 
+  tree_model %>% 
+  fit(Sale_Price ~ Longitude + Latitude, data = ames_train)
+```
+
+```{r}
+ames_test_small %>% 
+  select(Sale_Price) %>% 
+  bind_cols(predict(tree_fit, ames_test_small))
+```
+
+## 6.4 PARSNIP-EXTENSION PACKAGES
+## 6.5 CREATING MODEL SPECIFICATIONS
+
+```{r}
+# parsnip_addin()
+```
+
+## 6.6 CHAPTER SUMMARY
+
+```{r}
+library(tidymodels)
+data(ames)
+ames <- mutate(ames, Sale_Price = log10(Sale_Price))
+
+set.seed(502)
+ames_split <- initial_split(ames, prop = 0.80, strata = Sale_Price)
+ames_train <- training(ames_split)
+ames_test  <-  testing(ames_split)
+
+lm_model <- linear_reg() %>% set_engine("lm")
+```
+
