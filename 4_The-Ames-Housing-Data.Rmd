@@ -1,0 +1,38 @@
+# 4 The Ames Housing Data
+
+```{r}
+data(ames, package = "modeldata")
+
+dim(ames)
+```
+
+## 4.1 EXPLORING FEATURES OF HOMES IN AMES
+
+```{r}
+library(tidymodels)
+tidymodels_prefer()
+
+ggplot(ames, aes(x = Sale_Price)) + 
+  geom_histogram(bins = 50, col= "white")
+```
+
+```{r}
+ggplot(ames, aes(x = Sale_Price)) + 
+  geom_histogram(bins = 50, col= "white") +
+  scale_x_log10()
+```
+
+```{r}
+ames <- ames %>% mutate(Sale_Price = log10(Sale_Price))
+```
+
+## 4.2 CHAPTER SUMMARY
+
+The important code for preparing the Ames data set that we will carry forward into subsequent chapters is:
+
+```{r}
+library(tidymodels)
+data(ames)
+ames <- ames %>% mutate(Sale_Price = log10(Sale_Price))
+```
+
