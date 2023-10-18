@@ -1,0 +1,163 @@
+# 3 A Review of R Modeling Fundamentals
+## 3.1 AN EXAMPLE
+
+```{r}
+library(tidyverse)
+
+data(crickets, package = "modeldata")
+names(crickets)
+
+# Plot the temperature on the x-axis, the chirp rate on the y-axis. The plot
+# elements will be colored differently for each species:
+ggplot(crickets, 
+       aes(x = temp, y = rate, color = species, pch = species, lty = species)) + 
+  # Plot points for each data point and color by species
+  geom_point(size = 2) + 
+  # Show a simple linear model fit created separately for each species:
+  geom_smooth(method = lm, se = FALSE, alpha = 0.5) + 
+  scale_color_brewer(palette = "Paired") +
+  labs(x = "Temperature (C)", y = "Chirp Rate (per minute)")
+```
+
+```{r}
+interaction_fit <-  lm(rate ~ (temp + species)^2, data = crickets) 
+
+# To print a short summary of the model:
+interaction_fit
+```
+
+```{r}
+# Place two plots next to one another:
+par(mfrow = c(1, 2))
+
+# Show residuals vs predicted values:
+plot(interaction_fit, which = 1)
+
+# A normal quantile plot on the residuals:
+plot(interaction_fit, which = 2)
+```
+
+
+```{r}
+# Place two plots next to one another:
+par(mfrow = c(1, 2))
+
+# Show  Scale-Location:
+plot(interaction_fit, which = 3)
+
+# Show Cook's distance:
+plot(interaction_fit, which = 4)
+```
+
+
+
+```{r}
+# Fit a reduced model:
+main_effect_fit <-  lm(rate ~ temp + species, data = crickets) 
+
+# Compare the two:
+anova(main_effect_fit, interaction_fit)
+```
+
+```{r}
+summary(main_effect_fit)
+```
+
+```{r}
+new_values <- data.frame(species = "O. exclamationis", temp = 15:20)
+predict(main_effect_fit, new_values)
+```
+
+## 3.2 WHAT DOES THE R FORMULA DO?
+## 3.3 WHY TIDINESS IS IMPORTANT FOR MODELING
+
+```{r}
+plot_data <- data.frame(x = rnorm(1e3), y = rnorm(1e3))
+
+plot(plot_data$x, plot_data$y)
+
+library(lattice)
+xyplot(y ~ x, data = plot_data)
+
+library(ggplot2)
+ggplot(plot_data, aes(x = x, y = y)) + geom_point()
+```
+
+```{r, error=TRUE}
+# Add a missing value to the prediction set
+new_values$temp[1] <- NA
+
+# The predict method for `lm` defaults to `na.pass`:
+predict(main_effect_fit, new_values)
+#>     1     2     3     4     5     6 
+#>    NA 50.43 54.04 57.64 61.24 64.84
+
+# Alternatively 
+predict(main_effect_fit, new_values, na.action = na.fail)
+#> Error in na.fail.default(structure(list(temp = c(NA, 16L, 17L, 18L, 19L, : missing values in object
+
+predict(main_effect_fit, new_values, na.action = na.omit)
+```
+
+```{r}
+corr_res <- map(mtcars %>% select(-mpg), cor.test, y = mtcars$mpg)
+
+# The first of ten results in the vector: 
+corr_res[[1]]
+```
+
+```{r}
+library(broom)
+
+tidy(corr_res[[1]])
+```
+
+```{r}
+corr_res %>% 
+  # Convert each to a tidy format; `map_dfr()` stacks the data frames 
+  map_dfr(tidy, .id = "predictor") %>% 
+  ggplot(aes(x = fct_reorder(predictor, estimate))) + 
+  geom_point(aes(y = estimate)) + 
+  geom_errorbar(aes(ymin = conf.low, ymax = conf.high), width = .1) +
+  labs(x = NULL, y = "Correlation with mpg")
+```
+
+## 3.4 COMBINING BASE R MODELS AND THE TIDYVERSE
+
+```{r}
+split_by_species <- 
+  crickets %>% 
+  group_nest(species) 
+split_by_species
+```
+
+```{r}
+model_by_species <- 
+  split_by_species %>% 
+  mutate(model = map(data, ~ lm(rate ~ temp, data = .x)))
+model_by_species
+```
+
+```{r}
+model_by_species %>% 
+  mutate(coef = map(model, tidy)) %>% 
+  select(species, coef) %>% 
+  unnest(cols = c(coef))
+```
+
+## 3.5 THE TIDYMODELS METAPACKAGE
+
+```{r}
+library(tidymodels)
+```
+
+```{r}
+library(conflicted)
+conflict_prefer("filter", winner = "dplyr")
+```
+
+```{r}
+tidymodels_prefer(quiet = FALSE)
+```
+
+## 3.6 CHAPTER SUMMARY
