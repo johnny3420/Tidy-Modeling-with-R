@@ -1,0 +1,221 @@
+# 12 Model Tuning and the Dangers of Overfitting
+## 12.1 MODEL PARAMETERS
+## 12.2 TUNING PARAMETERS FOR DIFFERENT TYPES OF MODELS
+# 12.3 WHAT DO WE OPTIMIZE?
+
+```{r}
+library(tidymodels)
+tidymodels_prefer()
+
+data(two_class_dat)
+
+set.seed(91)
+split <- initial_split(two_class_dat)
+
+training_set <- training(split)
+testing_set  <-  testing(split)
+
+llhood <- function(...) {
+  logistic_reg() %>% 
+    set_engine("glm", ...) %>% 
+    fit(Class ~ ., data = training_set) %>% 
+    glance() %>% 
+    select(logLik)
+}
+
+bind_rows(
+  llhood(),
+  llhood(family = binomial(link = "probit")),
+  llhood(family = binomial(link = "cloglog"))
+) %>% 
+  mutate(link = c("logit", "probit", "c-log-log"))  %>% 
+  arrange(desc(logLik))
+```
+
+```{r}
+set.seed(1201)
+rs <- vfold_cv(training_set, repeats = 10)
+
+# Return the individual resampled performance estimates:
+lloss <- function(...) {
+  perf_meas <- metric_set(roc_auc, mn_log_loss)
+    
+  logistic_reg() %>% 
+    set_engine("glm", ...) %>% 
+    fit_resamples(Class ~ A + B, rs, metrics = perf_meas) %>% 
+    collect_metrics(summarize = FALSE) %>%
+    select(id, id2, .metric, .estimate)
+}
+
+resampled_res <- 
+  bind_rows(
+    lloss()                                    %>% mutate(model = "logistic"),
+    lloss(family = binomial(link = "probit"))  %>% mutate(model = "probit"),
+    lloss(family = binomial(link = "cloglog")) %>% mutate(model = "c-log-log")     
+  ) %>%
+  # Convert log-loss to log-likelihood:
+  mutate(.estimate = ifelse(.metric == "mn_log_loss", -.estimate, .estimate)) %>% 
+  group_by(model, .metric) %>% 
+  summarize(
+    mean = mean(.estimate, na.rm = TRUE),
+    std_err = sd(.estimate, na.rm = TRUE) / sqrt(n()), 
+    .groups = "drop"
+  )
+
+resampled_res %>% 
+  filter(.metric == "mn_log_loss") %>% 
+  ggplot(aes(x = mean, y = model)) + 
+  geom_point() + 
+  geom_errorbar(aes(xmin = mean - 1.64 * std_err, xmax = mean + 1.64 * std_err),
+                width = .1) + 
+  labs(y = NULL, x = "log-likelihood")
+```
+
+```{r}
+resampled_res %>% 
+  filter(.metric == "roc_auc") %>% 
+  ggplot(aes(x = mean, y = model)) + 
+  geom_point() + 
+  geom_errorbar(aes(xmin = mean - 1.64 * std_err, xmax = mean + 1.64 * std_err),
+                width = .1) + 
+  labs(y = NULL, x = "log-likelihood")
+```
+
+## 12.4 THE CONSEQUENCES OF POOR PARAMETER ESTIMATES
+## 12.5 TWO GENERAL STRATEGIES FOR OPTIMIZATION
+## 12.6 TUNING PARAMETERS IN TIDYMODELS
+
+```{r}
+rand_forest(trees = 2000, min_n = 10) %>%                   # <- main arguments
+  set_engine("ranger", regularization.factor = 0.5)         # <- engine-specific
+```
+
+```{r}
+neural_net_spec <- 
+  mlp(hidden_units = tune()) %>%
+  set_mode("regression") %>%
+  set_engine("keras")
+```
+
+```{r}
+tune()
+```
+
+```{r}
+extract_parameter_set_dials(neural_net_spec)
+```
+
+```{r}
+data(ames)
+ames <- mutate(ames, Sale_Price = log10(Sale_Price))
+
+set.seed(502)
+ames_split <- initial_split(ames, prop = 0.80, strata = Sale_Price)
+ames_train <- training(ames_split)
+ames_test  <-  testing(ames_split)
+
+ames_rec <- 
+  recipe(Sale_Price ~ Neighborhood + Gr_Liv_Area + Year_Built + Bldg_Type + 
+           Latitude + Longitude, data = ames_train)  %>%
+  step_log(Gr_Liv_Area, base = 10) %>% 
+  step_other(Neighborhood, threshold = tune()) %>% 
+  step_dummy(all_nominal_predictors()) %>% 
+  step_interact( ~ Gr_Liv_Area:starts_with("Bldg_Type_") ) %>% 
+  step_ns(Longitude, deg_free = tune("longitude df")) %>% 
+  step_ns(Latitude,  deg_free = tune("latitude df"))
+
+recipes_param <- extract_parameter_set_dials(ames_rec)
+recipes_param
+```
+
+```{r}
+wflow_param <- 
+  workflow() %>% 
+  add_recipe(ames_rec) %>% 
+  add_model(neural_net_spec) %>% 
+  extract_parameter_set_dials()
+wflow_param
+```
+
+```{r}
+hidden_units()
+```
+
+```{r}
+threshold()
+```
+
+```{r}
+spline_degree()
+```
+
+```{r}
+# identify the parameter using the id value:
+wflow_param %>% extract_parameter_dials("threshold")
+```
+
+```{r}
+extract_parameter_set_dials(ames_rec) %>% 
+  update(threshold = threshold(c(0.8, 1.0)))
+```
+
+```{r}
+rf_spec <- 
+  rand_forest(mtry = tune()) %>% 
+  set_engine("ranger", regularization.factor = tune("regularization")) %>%
+  set_mode("regression")
+
+rf_param <- extract_parameter_set_dials(rf_spec)
+rf_param
+```
+
+```{r}
+rf_param %>% 
+  update(mtry = mtry(c(1, 70)))
+```
+
+```{r}
+pca_rec <- 
+  recipe(Sale_Price ~ ., data = ames_train) %>% 
+  # Select the square-footage predictors and extract their PCA components:
+  step_normalize(contains("SF")) %>% 
+  # Select the number of components needed to capture 95% of
+  # the variance in the predictors. 
+  step_pca(contains("SF"), threshold = .95)
+  
+updated_param <- 
+  workflow() %>% 
+  add_model(rf_spec) %>% 
+  add_recipe(pca_rec) %>% 
+  extract_parameter_set_dials() %>% 
+  finalize(ames_train)
+updated_param
+
+updated_param %>% extract_parameter_dials("mtry")
+```
+
+```{r}
+rf_param
+```
+
+```{r}
+regularization_factor()
+```
+
+```{r}
+penalty()
+```
+
+```{r}
+#correct
+penalty(c(-1, 0)) %>% value_sample(1000) %>% summary()
+#incorrect
+penalty(c(0.1, 1.0)) %>% value_sample(1000) %>% summary()
+```
+
+```{r}
+penalty(trans = NULL, range = 10^c(-10, 0))
+```
+
+# 12.7 CHAPTER SUMMARY
+
