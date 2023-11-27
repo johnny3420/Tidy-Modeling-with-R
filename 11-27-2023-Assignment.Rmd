@@ -1,0 +1,341 @@
+---
+title: "11-27-2023-Assignment"
+output: html_document
+date: "2023-11-27"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidymodels)
+tidymodels_prefer()
+```
+
+```{r}
+data("ChickWeight")
+```
+
+```{r}
+head(ChickWeight)
+```
+
+```{r}
+summary(ChickWeight)
+```
+
+```{r}
+ChickWeight %>%
+  ggplot(aes(x = Time, y = weight, group = Chick)) +
+  geom_line(aes(color = Chick)) +
+  facet_wrap(~Diet, ncol = 2) +
+  theme(legend.position = "none")
+```
+
+
+1. use `rsample` to create training and test sets from ChickWeight.  Think about how you want this to be split.  hint:: you may need to also use a function from Chapter 3.  message me if you are stuck.
+
+```{r}
+set.seed(4262)
+grouped_split_chick <- ChickWeight %>%
+  group_nest(Chick, Diet) %>%
+  initial_split(prop = 0.80, strata = Diet)
+
+chick_train <- training(grouped_split_chick) %>% unnest(data)
+chick_test<- testing(grouped_split_chick) %>% unnest(data)
+```
+
+2. fit an lm to the ChickWeight (training) data set, modelling weight as a function of diet and time (and their interaction?),  using `parsnip` tools.  This really should be a mixed-effects model, so see if you can do that instead (e.g. with `lme4` or `stan` as the engine).
+
+```{r}
+lm_model <- linear_reg() %>% set_engine("lm")
+lm_form_fit <- lm_model %>%
+  fit(weight ~ Time + Diet, data = chick_train)
+tidy(lm_form_fit)
+```
+
+```{r}
+library(broom.mixed)
+stan_model <- linear_reg() %>% set_engine("stan")
+stan_form_fit <- stan_model %>%
+  fit(weight ~ Time + Diet, data = chick_train)
+tidy(stan_form_fit)
+```
+
+```{r}
+library(multilevelmod)
+lmer_model <- linear_reg() %>% set_engine("lmer")
+lmer_form_fit <- lmer_model %>%
+  fit(weight ~ Time + Diet + (1|Chick), data = chick_train)
+tidy(lmer_form_fit)
+```
+
+3. use your model to predict weight in your test set chicks. (using parsnip tools)
+
+```{r}
+lm_predictions <- chick_test %>%
+  select(weight, Diet) %>%
+  bind_cols(predict(lm_form_fit, new_data = chick_test)) %>%
+  bind_cols(predict(lm_form_fit, new_data = chick_test, type = "pred_int"))
+
+
+stan_predictions <- chick_test %>%
+  select(weight, Diet) %>%
+  bind_cols(predict(stan_form_fit, new_data = chick_test)) %>%
+  bind_cols(predict(stan_form_fit, new_data = chick_test, type = "pred_int"))
+
+lmer_predictions <- chick_test %>%
+  select(weight, Diet) %>%
+  bind_cols(predict(lmer_form_fit, new_data = chick_test))
+```
+
+4. plot predicted vs observed in your test data set.
+
+```{r}
+lm_predictions %>%
+  ggplot(aes(x = weight, y = .pred)) +
+  geom_point() +
+  geom_abline() +
+  geom_ribbon(aes(ymin = .pred_lower, ymax = .pred_upper),
+              alpha = 0.2)
+
+lm_predictions %>%
+  ggplot(aes(x = weight, y = .pred)) +
+  geom_point() +
+  facet_wrap(~Diet, ncol = 2) +
+  geom_abline() +
+  geom_ribbon(aes(ymin = .pred_lower, ymax = .pred_upper),
+              alpha = 0.2)
+```
+
+```{r}
+stan_predictions %>%
+  ggplot(aes(x = weight, y = .pred)) +
+  geom_point() +
+  geom_abline() +
+  geom_ribbon(aes(ymin = .pred_lower, ymax = .pred_upper),
+              alpha = 0.2)
+
+stan_predictions %>%
+  ggplot(aes(x = weight, y = .pred)) +
+  geom_point() +
+  facet_wrap(~Diet, ncol = 2) +
+  geom_abline() +
+  geom_ribbon(aes(ymin = .pred_lower, ymax = .pred_upper),
+              alpha = 0.2)
+```
+
+```{r}
+lmer_predictions %>%
+  ggplot(aes(x = weight, y = .pred)) +
+  geom_point() +
+  geom_abline()
+
+lm_predictions %>%
+  ggplot(aes(x = weight, y = .pred)) +
+  geom_point() +
+  facet_wrap(~Diet, ncol = 2) +
+  geom_abline()
+```
+
+
+## Repeat as interactions
+
+```{r}
+lm_form_fit <- lm_model %>%
+  fit(weight ~ Time * Diet, data = chick_train)
+lm_predictions <- chick_test %>%
+  select(weight, Diet) %>%
+  bind_cols(predict(lm_form_fit, new_data = chick_test)) %>%
+  bind_cols(predict(lm_form_fit, new_data = chick_test, type = "pred_int"))
+lm_predictions %>%
+  ggplot(aes(x = weight, y = .pred)) +
+  geom_point() +
+  geom_abline() +
+  geom_ribbon(aes(ymin = .pred_lower, ymax = .pred_upper),
+              alpha = 0.2)
+lm_predictions %>%
+  ggplot(aes(x = weight, y = .pred)) +
+  geom_point() +
+  facet_wrap(~Diet, ncol = 2) +
+  geom_abline() +
+  geom_ribbon(aes(ymin = .pred_lower, ymax = .pred_upper),
+              alpha = 0.2)
+```
+
+```{r}
+stan_form_fit <- stan_model %>%
+  fit(weight ~ Time * Diet, data = chick_train)
+stan_predictions <- chick_test %>%
+  select(weight, Diet) %>%
+  bind_cols(predict(stan_form_fit, new_data = chick_test)) %>%
+  bind_cols(predict(stan_form_fit, new_data = chick_test, type = "pred_int"))
+stan_predictions %>%
+  ggplot(aes(x = weight, y = .pred)) +
+  geom_point() +
+  geom_abline() +
+  geom_ribbon(aes(ymin = .pred_lower, ymax = .pred_upper),
+              alpha = 0.2)
+stan_predictions %>%
+  ggplot(aes(x = weight, y = .pred)) +
+  geom_point() +
+  facet_wrap(~Diet, ncol = 2) +
+  geom_abline() +
+  geom_ribbon(aes(ymin = .pred_lower, ymax = .pred_upper),
+              alpha = 0.2)
+```
+
+```{r}
+lmer_form_fit <- lmer_model %>%
+  fit(weight ~ Time * Diet + (1|Chick), data = chick_train)
+lmer_predictions <- chick_test %>%
+  select(weight, Diet) %>%
+  bind_cols(predict(lmer_form_fit, new_data = chick_test))
+lmer_predictions %>%
+  ggplot(aes(x = weight, y = .pred)) +
+  geom_point() +
+  geom_abline()
+lmer_predictions %>%
+  ggplot(aes(x = weight, y = .pred)) +
+  geom_point() +
+  facet_wrap(~Diet, ncol = 2) +
+  geom_abline()
+```
+
+## Maps
+
+```{r}
+library(osmdata)
+```
+
+```{r}
+getbb("Davis, California")
+```
+
+```{r}
+streets <- getbb("Davis, California") %>%
+  opq() %>%
+  add_osm_feature(key = "highway", 
+                  value = c("motorway", "primary", 
+                            "secondary", "tertiary")) %>%
+  osmdata_sf()
+streets
+```
+
+```{r}
+small_streets <- getbb("Davis, California")%>%
+  opq()%>%
+  add_osm_feature(key = "highway", 
+                  value = c("residential", "living_street",
+                            "unclassified",
+                            "service", "footway")) %>%
+  osmdata_sf()
+
+river <- getbb("Davis, California")%>%
+  opq()%>%
+  add_osm_feature(key = "waterway", value = "river") %>%
+  osmdata_sf()
+
+college_buildings <- getbb("Davis, California")%>%
+  opq()%>%
+  add_osm_feature(key = "building", value = "university") %>%
+  osmdata_sf()
+
+green_hall <- opq_osm_id(type = "node", id = 275630389) %>%
+  opq_string() %>%
+  osmdata_sf()
+```
+
+```{r}
+ggplot() +
+  geom_sf(data = streets$osm_lines,
+          inherit.aes = FALSE,
+          color = "black",
+          size = .4,
+          alpha = .8) +
+  coord_sf(xlim = c(-121.80, -121.67), 
+           ylim = c(38.53, 38.58),
+           expand = FALSE) 
+```
+
+```{r}
+ggplot() +
+  geom_sf(data = streets$osm_lines,
+          inherit.aes = FALSE,
+          color = "black",
+          size = .4,
+          alpha = .8) +
+  geom_sf(data = small_streets$osm_lines,
+          inherit.aes = FALSE,
+          color = "black",
+          size = .4,
+          alpha = .6) +
+  geom_sf(data = river$osm_lines,
+          inherit.aes = FALSE,
+          color = "black",
+          size = .2,
+          alpha = .5) +
+  coord_sf(xlim = c(-121.80, -121.67), 
+           ylim = c(38.53, 38.58),
+           expand = FALSE) 
+```
+
+```{r}
+ggplot() +
+  geom_sf(data = streets$osm_lines,
+          inherit.aes = FALSE,
+          color = "#7fc0ff",
+          size = .4,
+          alpha = .8) +
+  
+  geom_sf(data = small_streets$osm_lines,
+          inherit.aes = FALSE,
+          color = "#ffbe7f",
+          size = .2,
+          alpha = .6) +
+  geom_sf(data = river$osm_lines,
+          inherit.aes = FALSE,
+          color = "darkblue",
+          size = .2,
+          alpha = .5) +
+  coord_sf(xlim = c(-121.80, -121.67), 
+           ylim = c(38.53, 38.58),
+           expand = FALSE) +
+  theme_void() +
+  theme(
+    plot.background = element_rect(fill = "#282828")
+  )
+```
+
+```{r}
+ggplot() +
+  geom_sf(data = streets$osm_lines,
+          inherit.aes = FALSE,
+          color = "#7fc0ff",
+          size = .4,
+          alpha = .8) +
+  geom_sf(data = green_hall$osm_lines,
+          inherit.aes = FALSE,
+          color = "green",
+          size = 2,
+          alpha = 1) +
+  geom_sf(data = small_streets$osm_lines,
+          inherit.aes = FALSE,
+          color = "#ffbe7f",
+          size = .2,
+          alpha = .6) +
+  geom_sf(data = river$osm_lines,
+          inherit.aes = FALSE,
+          color = "darkblue",
+          size = .2,
+          alpha = .5) +
+  coord_sf(xlim = c(-121.80, -121.67), 
+           ylim = c(38.53, 38.58),
+           expand = FALSE) +
+  theme_void() +
+  theme(
+    plot.background = element_rect(fill = "#282828")
+  )
+```
+
