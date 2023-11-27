@@ -315,7 +315,7 @@ ggplot() +
           color = "#7fc0ff",
           size = .4,
           alpha = .8) +
-  geom_sf(data = green_hall$osm_lines,
+  geom_sf(data = green_hall$osm_points,
           inherit.aes = FALSE,
           color = "green",
           size = 2,
