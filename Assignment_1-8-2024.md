@@ -16,10 +16,10 @@ library(tidyverse)
 
 ```
 ## ── Attaching core tidyverse packages ──────────────────────── tidyverse 2.0.0 ──
-## ✔ dplyr     1.1.4     ✔ readr     2.1.4
-## ✔ forcats   1.0.0     ✔ stringr   1.5.1
+## ✔ dplyr     1.1.2     ✔ readr     2.1.4
+## ✔ forcats   1.0.0     ✔ stringr   1.5.0
 ## ✔ ggplot2   3.4.4     ✔ tibble    3.2.1
-## ✔ lubridate 1.9.3     ✔ tidyr     1.3.0
+## ✔ lubridate 1.9.2     ✔ tidyr     1.3.0
 ## ✔ purrr     1.0.2     
 ## ── Conflicts ────────────────────────────────────────── tidyverse_conflicts() ──
 ## ✖ dplyr::filter() masks stats::filter()
@@ -46,7 +46,7 @@ library(tidymodels)
 ## ✖ dplyr::lag()      masks stats::lag()
 ## ✖ yardstick::spec() masks readr::spec()
 ## ✖ recipes::step()   masks stats::step()
-## • Learn how to get started at https://www.tidymodels.org/start/
+## • Dig deeper into tidy modeling with R at https://www.tmwr.org
 ```
 
 ```r
@@ -235,7 +235,7 @@ chicago_rec
 ```
 
 ```
-## • Centering and scaling for: has_role("station") and has_role("weather")
+## • Centering and scaling for: has_role("station"), has_role("weather")
 ```
 
 ```
@@ -302,12 +302,12 @@ chicago_test_res <- predict(lm_fit, new_data = chicago_test %>% select(-ridershi
 ```
 
 ```r
-chicago_test_res <- bind_cols(chicago_test_res, chicago_test %>% select(ridership))
+chicago_test_res <- bind_cols(chicago_test_res, chicago_test %>% select(ridership, Weekend))
 ```
 
 
 ```r
-ggplot(chicago_test_res, aes(x = ridership, y = .pred)) + 
+ggplot(chicago_test_res, aes(x = ridership, y = .pred, color = Weekend)) + 
   # Create a diagonal line:
   geom_abline(lty = 2) + 
   geom_point(alpha = 0.5) + 
