@@ -46,7 +46,7 @@ library(tidymodels)
 ## ✖ dplyr::lag()      masks stats::lag()
 ## ✖ yardstick::spec() masks readr::spec()
 ## ✖ recipes::step()   masks stats::step()
-## • Dig deeper into tidy modeling with R at https://www.tmwr.org
+## • Use suppressPackageStartupMessages() to eliminate package startup messages
 ```
 
 ```r
@@ -292,6 +292,10 @@ Use the fit from 4B to predict ridership in the test data.  Evaluate the predict
 
 
 ```r
+chicago_no_home <- chicago_test %>%
+  mutate(Home = Blackhawks_Home + Cubs_Home + Bulls_Home + Bears_Home + WhiteSox_Home,
+         Home = ifelse(Home > 0, TRUE, FALSE)) %>%
+  select(Home)
 chicago_test_res <- predict(lm_fit, new_data = chicago_test %>% select(-ridership))
 ```
 
@@ -302,12 +306,12 @@ chicago_test_res <- predict(lm_fit, new_data = chicago_test %>% select(-ridershi
 ```
 
 ```r
-chicago_test_res <- bind_cols(chicago_test_res, chicago_test %>% select(ridership, Weekend))
+chicago_test_res <- bind_cols(chicago_test_res, chicago_test %>% select(ridership, Weekend), chicago_no_home)
 ```
 
 
 ```r
-ggplot(chicago_test_res, aes(x = ridership, y = .pred, color = Weekend)) + 
+ggplot(chicago_test_res, aes(x = ridership, y = .pred, color = Home, shape = Weekend)) + 
   # Create a diagonal line:
   geom_abline(lty = 2) + 
   geom_point(alpha = 0.5) + 
