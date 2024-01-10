@@ -1,7 +1,14 @@
+---
+output: 
+  html_document: 
+    keep_md: yes
+---
 # 9 Judging Model Effectiveness
 
 ```{r}
+library(tidyverse)
 library(tidymodels)
+tidymodels_prefer()
 data(ames)
 ames <- mutate(ames, Sale_Price = log10(Sale_Price))
 
