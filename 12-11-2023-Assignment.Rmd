@@ -1,0 +1,85 @@
+---
+title: "12-11-2023-Assignment"
+output: html_document
+date: "2023-12-11"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidymodels)
+tidymodels_prefer()
+```
+
+```{r}
+data("ChickWeight")
+```
+
+```{r}
+head(ChickWeight)
+```
+
+```{r}
+summary(ChickWeight)
+```
+
+```{r}
+ChickWeight %>%
+  ggplot(aes(x = Time, y = weight, group = Chick)) +
+  geom_line(aes(color = Chick)) +
+  facet_wrap(~Diet, ncol = 2) +
+  theme(legend.position = "none")
+```
+
+```{r}
+chick_split <- group_initial_split(ChickWeight,
+                                   Chick,
+                                   strata = Diet,
+                                   prop = 0.80)
+chick_train <- training(chick_split)
+chick_test <- testing(chick_split)
+```
+
+
+```{r}
+library(multilevelmod)
+library(workflowsets)
+
+lm_model <- 
+  linear_reg() %>% 
+  set_engine("lm")
+
+lmer_model <- 
+  linear_reg() %>% 
+  set_engine("lmer", indicators = "traditional")
+
+models <- list(lm = lm_model,
+               lm = lm_model,
+               lmer = lmer_model)
+
+forms <- list(add = weight ~ Time + Diet,
+               int = weight ~ Time * Diet,
+               mix = weight ~ Time + Diet + (1|Chick))
+
+chick_models <- workflow_set(preproc = forms,
+                             models = models,
+                             cross = FALSE)
+
+chick_models
+```
+
+```{r}
+chick_models$info[[1]]
+```
+```{r}
+extract_workflow(chick_models, id = "mix_lmer")
+```
+
+```{r}
+chick_models <- chick_models %>%
+  mutate(fit = map(info, ~ fit(.x$workflow[[1]], chick_train)))
+chick_models
+```
+

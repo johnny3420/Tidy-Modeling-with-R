@@ -357,7 +357,6 @@ display: none;
 <div id="the-resubstitution-approach" class="section level2">
 <h2>10.1 THE RESUBSTITUTION APPROACH</h2>
 <pre class="r"><code>library(tidymodels)</code></pre>
-<pre><code>## Warning: package &#39;tidymodels&#39; was built under R version 4.3.1</code></pre>
 <pre><code>## ── Attaching packages ────────────────────────────────────── tidymodels 1.1.1 ──</code></pre>
 <pre><code>## ✔ broom        1.0.5     ✔ recipes      1.0.8
 ## ✔ dials        1.2.0     ✔ rsample      1.2.0
@@ -367,24 +366,12 @@ display: none;
 ## ✔ modeldata    1.2.0     ✔ workflows    1.1.3
 ## ✔ parsnip      1.1.1     ✔ workflowsets 1.0.1
 ## ✔ purrr        1.0.2     ✔ yardstick    1.2.0</code></pre>
-<pre><code>## Warning: package &#39;dials&#39; was built under R version 4.3.1</code></pre>
-<pre><code>## Warning: package &#39;ggplot2&#39; was built under R version 4.3.1</code></pre>
-<pre><code>## Warning: package &#39;infer&#39; was built under R version 4.3.1</code></pre>
-<pre><code>## Warning: package &#39;modeldata&#39; was built under R version 4.3.1</code></pre>
-<pre><code>## Warning: package &#39;parsnip&#39; was built under R version 4.3.1</code></pre>
-<pre><code>## Warning: package &#39;purrr&#39; was built under R version 4.3.1</code></pre>
-<pre><code>## Warning: package &#39;recipes&#39; was built under R version 4.3.1</code></pre>
-<pre><code>## Warning: package &#39;rsample&#39; was built under R version 4.3.1</code></pre>
-<pre><code>## Warning: package &#39;tune&#39; was built under R version 4.3.1</code></pre>
-<pre><code>## Warning: package &#39;workflows&#39; was built under R version 4.3.1</code></pre>
-<pre><code>## Warning: package &#39;workflowsets&#39; was built under R version 4.3.1</code></pre>
-<pre><code>## Warning: package &#39;yardstick&#39; was built under R version 4.3.1</code></pre>
 <pre><code>## ── Conflicts ───────────────────────────────────────── tidymodels_conflicts() ──
 ## ✖ purrr::discard() masks scales::discard()
 ## ✖ dplyr::filter()  masks stats::filter()
 ## ✖ dplyr::lag()     masks stats::lag()
 ## ✖ recipes::step()  masks stats::step()
-## • Use suppressPackageStartupMessages() to eliminate package startup messages</code></pre>
+## • Learn how to get started at https://www.tidymodels.org/start/</code></pre>
 <pre class="r"><code>data(ames)
 ames &lt;- mutate(ames, Sale_Price = log10(Sale_Price))
 
@@ -469,7 +456,442 @@ rf_fit &lt;- rf_wflow %&gt;% fit(data = ames_train)</code></pre>
 <h2>10.2 RESAMPLING METHODS</h2>
 <div id="cross-validation" class="section level3">
 <h3>10.2.1 CROSS-VALIDATION</h3>
+<pre class="r"><code>set.seed(1001)
+ames_folds &lt;- vfold_cv(ames_train, v = 10)
+ames_folds</code></pre>
+<pre><code>## #  10-fold cross-validation 
+## # A tibble: 10 × 2
+##    splits             id    
+##    &lt;list&gt;             &lt;chr&gt; 
+##  1 &lt;split [2107/235]&gt; Fold01
+##  2 &lt;split [2107/235]&gt; Fold02
+##  3 &lt;split [2108/234]&gt; Fold03
+##  4 &lt;split [2108/234]&gt; Fold04
+##  5 &lt;split [2108/234]&gt; Fold05
+##  6 &lt;split [2108/234]&gt; Fold06
+##  7 &lt;split [2108/234]&gt; Fold07
+##  8 &lt;split [2108/234]&gt; Fold08
+##  9 &lt;split [2108/234]&gt; Fold09
+## 10 &lt;split [2108/234]&gt; Fold10</code></pre>
+<pre class="r"><code># For the first fold:
+ames_folds$splits[[1]] %&gt;% analysis() %&gt;% dim()</code></pre>
+<pre><code>## [1] 2107   74</code></pre>
+<pre class="r"><code># For the first fold:
+ames_folds$splits[[1]] %&gt;% assessment() %&gt;% dim()</code></pre>
+<pre><code>## [1] 235  74</code></pre>
+<pre class="r"><code>vfold_cv(ames_train, v = 10, repeats = 5)</code></pre>
+<pre><code>## #  10-fold cross-validation repeated 5 times 
+## # A tibble: 50 × 3
+##    splits             id      id2   
+##    &lt;list&gt;             &lt;chr&gt;   &lt;chr&gt; 
+##  1 &lt;split [2107/235]&gt; Repeat1 Fold01
+##  2 &lt;split [2107/235]&gt; Repeat1 Fold02
+##  3 &lt;split [2108/234]&gt; Repeat1 Fold03
+##  4 &lt;split [2108/234]&gt; Repeat1 Fold04
+##  5 &lt;split [2108/234]&gt; Repeat1 Fold05
+##  6 &lt;split [2108/234]&gt; Repeat1 Fold06
+##  7 &lt;split [2108/234]&gt; Repeat1 Fold07
+##  8 &lt;split [2108/234]&gt; Repeat1 Fold08
+##  9 &lt;split [2108/234]&gt; Repeat1 Fold09
+## 10 &lt;split [2108/234]&gt; Repeat1 Fold10
+## # ℹ 40 more rows</code></pre>
+<pre class="r"><code>#loo_cv(ames_train)</code></pre>
+<pre class="r"><code>mc_cv(ames_train, prop = 9/10, times = 20)</code></pre>
+<pre><code>## # Monte Carlo cross-validation (0.9/0.1) with 20 resamples  
+## # A tibble: 20 × 2
+##    splits             id        
+##    &lt;list&gt;             &lt;chr&gt;     
+##  1 &lt;split [2107/235]&gt; Resample01
+##  2 &lt;split [2107/235]&gt; Resample02
+##  3 &lt;split [2107/235]&gt; Resample03
+##  4 &lt;split [2107/235]&gt; Resample04
+##  5 &lt;split [2107/235]&gt; Resample05
+##  6 &lt;split [2107/235]&gt; Resample06
+##  7 &lt;split [2107/235]&gt; Resample07
+##  8 &lt;split [2107/235]&gt; Resample08
+##  9 &lt;split [2107/235]&gt; Resample09
+## 10 &lt;split [2107/235]&gt; Resample10
+## 11 &lt;split [2107/235]&gt; Resample11
+## 12 &lt;split [2107/235]&gt; Resample12
+## 13 &lt;split [2107/235]&gt; Resample13
+## 14 &lt;split [2107/235]&gt; Resample14
+## 15 &lt;split [2107/235]&gt; Resample15
+## 16 &lt;split [2107/235]&gt; Resample16
+## 17 &lt;split [2107/235]&gt; Resample17
+## 18 &lt;split [2107/235]&gt; Resample18
+## 19 &lt;split [2107/235]&gt; Resample19
+## 20 &lt;split [2107/235]&gt; Resample20</code></pre>
 </div>
+<div id="validation-sets" class="section level3">
+<h3>10.2.2 VALIDATION SETS</h3>
+<pre class="r"><code>set.seed(52)
+# To put 60% into training, 20% in validation, and 20% in testing:
+ames_val_split &lt;- initial_validation_split(ames, prop = c(0.6, 0.2))
+ames_val_split</code></pre>
+<pre><code>## &lt;Training/Validation/Testing/Total&gt;
+## &lt;1758/586/586/2930&gt;</code></pre>
+<pre class="r"><code># Object used for resampling: 
+val_set &lt;- validation_set(ames_val_split)
+val_set</code></pre>
+<pre><code>## # A tibble: 1 × 2
+##   splits             id        
+##   &lt;list&gt;             &lt;chr&gt;     
+## 1 &lt;split [1758/586]&gt; validation</code></pre>
+</div>
+<div id="bootstrapping" class="section level3">
+<h3>10.2.3 BOOTSTRAPPING</h3>
+<pre class="r"><code>bootstraps(ames_train, times = 5)</code></pre>
+<pre><code>## # Bootstrap sampling 
+## # A tibble: 5 × 2
+##   splits             id        
+##   &lt;list&gt;             &lt;chr&gt;     
+## 1 &lt;split [2342/867]&gt; Bootstrap1
+## 2 &lt;split [2342/869]&gt; Bootstrap2
+## 3 &lt;split [2342/859]&gt; Bootstrap3
+## 4 &lt;split [2342/858]&gt; Bootstrap4
+## 5 &lt;split [2342/873]&gt; Bootstrap5</code></pre>
+</div>
+<div id="rolling-forecasting-origin-resampling" class="section level3">
+<h3>10.2.4 ROLLING FORECASTING ORIGIN RESAMPLING</h3>
+<pre class="r"><code>time_slices &lt;- 
+  tibble(x = 1:365) %&gt;% 
+  rolling_origin(initial = 6 * 30, assess = 30, skip = 29, cumulative = FALSE)
+
+data_range &lt;- function(x) {
+  summarize(x, first = min(x), last = max(x))
+}
+
+map_dfr(time_slices$splits, ~   analysis(.x) %&gt;% data_range())</code></pre>
+<pre><code>## # A tibble: 6 × 2
+##   first  last
+##   &lt;int&gt; &lt;int&gt;
+## 1     1   180
+## 2    31   210
+## 3    61   240
+## 4    91   270
+## 5   121   300
+## 6   151   330</code></pre>
+<pre class="r"><code>map_dfr(time_slices$splits, ~ assessment(.x) %&gt;% data_range())</code></pre>
+<pre><code>## # A tibble: 6 × 2
+##   first  last
+##   &lt;int&gt; &lt;int&gt;
+## 1   181   210
+## 2   211   240
+## 3   241   270
+## 4   271   300
+## 5   301   330
+## 6   331   360</code></pre>
+</div>
+</div>
+<div id="estimating-performance" class="section level2">
+<h2>10.3 ESTIMATING PERFORMANCE</h2>
+<pre class="r"><code># model_spec %&gt;% fit_resamples(formula,  resamples, ...)
+# model_spec %&gt;% fit_resamples(recipe,   resamples, ...)
+# workflow   %&gt;% fit_resamples(          resamples, ...)</code></pre>
+<pre class="r"><code>keep_pred &lt;- control_resamples(save_pred = TRUE, save_workflow = TRUE)
+
+set.seed(1003)
+rf_res &lt;- 
+  rf_wflow %&gt;% 
+  fit_resamples(resamples = ames_folds, control = keep_pred)
+rf_res</code></pre>
+<pre><code>## # Resampling results
+## # 10-fold cross-validation 
+## # A tibble: 10 × 5
+##    splits             id     .metrics         .notes           .predictions
+##    &lt;list&gt;             &lt;chr&gt;  &lt;list&gt;           &lt;list&gt;           &lt;list&gt;      
+##  1 &lt;split [2107/235]&gt; Fold01 &lt;tibble [2 × 4]&gt; &lt;tibble [0 × 3]&gt; &lt;tibble&gt;    
+##  2 &lt;split [2107/235]&gt; Fold02 &lt;tibble [2 × 4]&gt; &lt;tibble [0 × 3]&gt; &lt;tibble&gt;    
+##  3 &lt;split [2108/234]&gt; Fold03 &lt;tibble [2 × 4]&gt; &lt;tibble [0 × 3]&gt; &lt;tibble&gt;    
+##  4 &lt;split [2108/234]&gt; Fold04 &lt;tibble [2 × 4]&gt; &lt;tibble [0 × 3]&gt; &lt;tibble&gt;    
+##  5 &lt;split [2108/234]&gt; Fold05 &lt;tibble [2 × 4]&gt; &lt;tibble [0 × 3]&gt; &lt;tibble&gt;    
+##  6 &lt;split [2108/234]&gt; Fold06 &lt;tibble [2 × 4]&gt; &lt;tibble [0 × 3]&gt; &lt;tibble&gt;    
+##  7 &lt;split [2108/234]&gt; Fold07 &lt;tibble [2 × 4]&gt; &lt;tibble [0 × 3]&gt; &lt;tibble&gt;    
+##  8 &lt;split [2108/234]&gt; Fold08 &lt;tibble [2 × 4]&gt; &lt;tibble [0 × 3]&gt; &lt;tibble&gt;    
+##  9 &lt;split [2108/234]&gt; Fold09 &lt;tibble [2 × 4]&gt; &lt;tibble [0 × 3]&gt; &lt;tibble&gt;    
+## 10 &lt;split [2108/234]&gt; Fold10 &lt;tibble [2 × 4]&gt; &lt;tibble [0 × 3]&gt; &lt;tibble&gt;</code></pre>
+<pre class="r"><code>collect_metrics(rf_res)</code></pre>
+<pre><code>## # A tibble: 2 × 6
+##   .metric .estimator   mean     n std_err .config             
+##   &lt;chr&gt;   &lt;chr&gt;       &lt;dbl&gt; &lt;int&gt;   &lt;dbl&gt; &lt;chr&gt;               
+## 1 rmse    standard   0.0721    10 0.00305 Preprocessor1_Model1
+## 2 rsq     standard   0.831     10 0.0108  Preprocessor1_Model1</code></pre>
+<pre class="r"><code>collect_metrics(rf_res, summarize = FALSE)</code></pre>
+<pre><code>## # A tibble: 20 × 5
+##    id     .metric .estimator .estimate .config             
+##    &lt;chr&gt;  &lt;chr&gt;   &lt;chr&gt;          &lt;dbl&gt; &lt;chr&gt;               
+##  1 Fold01 rmse    standard      0.0605 Preprocessor1_Model1
+##  2 Fold01 rsq     standard      0.862  Preprocessor1_Model1
+##  3 Fold02 rmse    standard      0.0653 Preprocessor1_Model1
+##  4 Fold02 rsq     standard      0.861  Preprocessor1_Model1
+##  5 Fold03 rmse    standard      0.0609 Preprocessor1_Model1
+##  6 Fold03 rsq     standard      0.880  Preprocessor1_Model1
+##  7 Fold04 rmse    standard      0.0699 Preprocessor1_Model1
+##  8 Fold04 rsq     standard      0.818  Preprocessor1_Model1
+##  9 Fold05 rmse    standard      0.0738 Preprocessor1_Model1
+## 10 Fold05 rsq     standard      0.851  Preprocessor1_Model1
+## 11 Fold06 rmse    standard      0.0682 Preprocessor1_Model1
+## 12 Fold06 rsq     standard      0.822  Preprocessor1_Model1
+## 13 Fold07 rmse    standard      0.0712 Preprocessor1_Model1
+## 14 Fold07 rsq     standard      0.850  Preprocessor1_Model1
+## 15 Fold08 rmse    standard      0.0871 Preprocessor1_Model1
+## 16 Fold08 rsq     standard      0.784  Preprocessor1_Model1
+## 17 Fold09 rmse    standard      0.0887 Preprocessor1_Model1
+## 18 Fold09 rsq     standard      0.789  Preprocessor1_Model1
+## 19 Fold10 rmse    standard      0.0752 Preprocessor1_Model1
+## 20 Fold10 rsq     standard      0.795  Preprocessor1_Model1</code></pre>
+<pre class="r"><code>assess_res &lt;- collect_predictions(rf_res)
+assess_res</code></pre>
+<pre><code>## # A tibble: 2,342 × 5
+##    id     .pred  .row Sale_Price .config             
+##    &lt;chr&gt;  &lt;dbl&gt; &lt;int&gt;      &lt;dbl&gt; &lt;chr&gt;               
+##  1 Fold01  5.10    10       5.09 Preprocessor1_Model1
+##  2 Fold01  4.92    27       4.90 Preprocessor1_Model1
+##  3 Fold01  5.21    47       5.08 Preprocessor1_Model1
+##  4 Fold01  5.13    52       5.10 Preprocessor1_Model1
+##  5 Fold01  5.13    59       5.10 Preprocessor1_Model1
+##  6 Fold01  5.13    63       5.11 Preprocessor1_Model1
+##  7 Fold01  4.87    65       4.91 Preprocessor1_Model1
+##  8 Fold01  4.98    66       5.04 Preprocessor1_Model1
+##  9 Fold01  4.91    67       4.84 Preprocessor1_Model1
+## 10 Fold01  4.91    68       5.01 Preprocessor1_Model1
+## # ℹ 2,332 more rows</code></pre>
+<pre class="r"><code>collect_predictions(rf_res, summarize = T)</code></pre>
+<pre><code>## # A tibble: 2,342 × 4
+##     .row Sale_Price .config              .pred
+##    &lt;int&gt;      &lt;dbl&gt; &lt;chr&gt;                &lt;dbl&gt;
+##  1     1       5.10 Preprocessor1_Model1  5.00
+##  2     2       5.06 Preprocessor1_Model1  5.07
+##  3     3       5.02 Preprocessor1_Model1  4.98
+##  4     4       4.94 Preprocessor1_Model1  5.02
+##  5     5       5.11 Preprocessor1_Model1  5.15
+##  6     6       5.08 Preprocessor1_Model1  5.11
+##  7     7       5.00 Preprocessor1_Model1  5.14
+##  8     8       4.83 Preprocessor1_Model1  5.00
+##  9     9       5.05 Preprocessor1_Model1  5.15
+## 10    10       5.09 Preprocessor1_Model1  5.10
+## # ℹ 2,332 more rows</code></pre>
+<pre class="r"><code>assess_res %&gt;% 
+  ggplot(aes(x = Sale_Price, y = .pred)) + 
+  geom_point(alpha = .15) +
+  geom_abline(color = &quot;red&quot;) + 
+  coord_obs_pred() + 
+  ylab(&quot;Predicted&quot;)</code></pre>
+<p><img src="data:image/png;base64,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" /><!-- --></p>
+<pre class="r"><code>over_predicted &lt;- 
+  assess_res %&gt;% 
+  mutate(residual = Sale_Price - .pred) %&gt;% 
+  arrange(desc(abs(residual))) %&gt;% 
+  slice(1:2)
+over_predicted</code></pre>
+<pre><code>## # A tibble: 2 × 6
+##   id     .pred  .row Sale_Price .config              residual
+##   &lt;chr&gt;  &lt;dbl&gt; &lt;int&gt;      &lt;dbl&gt; &lt;chr&gt;                   &lt;dbl&gt;
+## 1 Fold09  4.96    32       4.11 Preprocessor1_Model1   -0.858
+## 2 Fold08  4.93   317       4.12 Preprocessor1_Model1   -0.816</code></pre>
+<pre class="r"><code>ames_train %&gt;% 
+  slice(over_predicted$.row) %&gt;% 
+  select(Gr_Liv_Area, Neighborhood, Year_Built, Bedroom_AbvGr, Full_Bath)</code></pre>
+<pre><code>## # A tibble: 2 × 5
+##   Gr_Liv_Area Neighborhood           Year_Built Bedroom_AbvGr Full_Bath
+##         &lt;int&gt; &lt;fct&gt;                       &lt;int&gt;         &lt;int&gt;     &lt;int&gt;
+## 1         832 Old_Town                     1923             2         1
+## 2         733 Iowa_DOT_and_Rail_Road       1952             2         1</code></pre>
+<pre class="r"><code>val_res &lt;- rf_wflow %&gt;% fit_resamples(resamples = val_set)</code></pre>
+<pre><code>## Warning in `[.tbl_df`(x, is.finite(x &lt;- as.numeric(x))): NAs introduced by
+## coercion</code></pre>
+<pre class="r"><code>val_res</code></pre>
+<pre><code>## # Resampling results
+## #  
+## # A tibble: 1 × 4
+##   splits             id         .metrics         .notes          
+##   &lt;list&gt;             &lt;chr&gt;      &lt;list&gt;           &lt;list&gt;          
+## 1 &lt;split [1758/586]&gt; validation &lt;tibble [2 × 4]&gt; &lt;tibble [0 × 3]&gt;</code></pre>
+<pre class="r"><code>collect_metrics(val_res)</code></pre>
+<pre><code>## # A tibble: 2 × 6
+##   .metric .estimator   mean     n std_err .config             
+##   &lt;chr&gt;   &lt;chr&gt;       &lt;dbl&gt; &lt;int&gt;   &lt;dbl&gt; &lt;chr&gt;               
+## 1 rmse    standard   0.0727     1      NA Preprocessor1_Model1
+## 2 rsq     standard   0.823      1      NA Preprocessor1_Model1</code></pre>
+</div>
+<div id="parallel-processing" class="section level2">
+<h2>10.4 PARALLEL PROCESSING</h2>
+<pre class="r"><code># The number of physical cores in the hardware:
+parallel::detectCores(logical = FALSE)</code></pre>
+<pre><code>## [1] 4</code></pre>
+<pre class="r"><code>parallel::detectCores(logical = TRUE)</code></pre>
+<pre><code>## [1] 8</code></pre>
+<pre class="r"><code># All operating systems
+library(doParallel)
+
+# Create a cluster object and then register: 
+cl &lt;- makePSOCKcluster(2)
+registerDoParallel(cl)
+
+# Now run fit_resamples()`...
+
+stopCluster(cl)</code></pre>
+</div>
+<div id="saving-the-resampled-objects" class="section level2">
+<h2>10.5 SAVING THE RESAMPLED OBJECTS</h2>
+<pre class="r"><code>ames_rec &lt;- 
+  recipe(Sale_Price ~ Neighborhood + Gr_Liv_Area + Year_Built + Bldg_Type + 
+           Latitude + Longitude, data = ames_train) %&gt;%
+  step_other(Neighborhood, threshold = 0.01) %&gt;% 
+  step_dummy(all_nominal_predictors()) %&gt;% 
+  step_interact( ~ Gr_Liv_Area:starts_with(&quot;Bldg_Type_&quot;) ) %&gt;% 
+  step_ns(Latitude, Longitude, deg_free = 20)
+
+lm_wflow &lt;-  
+  workflow() %&gt;% 
+  add_recipe(ames_rec) %&gt;% 
+  add_model(linear_reg() %&gt;% set_engine(&quot;lm&quot;)) 
+
+lm_fit &lt;- lm_wflow %&gt;% fit(data = ames_train)
+
+# Select the recipe: 
+extract_recipe(lm_fit, estimated = TRUE)</code></pre>
+<pre><code>## </code></pre>
+<pre><code>## ── Recipe ──────────────────────────────────────────────────────────────────────</code></pre>
+<pre><code>## </code></pre>
+<pre><code>## ── Inputs</code></pre>
+<pre><code>## Number of variables by role</code></pre>
+<pre><code>## outcome:   1
+## predictor: 6</code></pre>
+<pre><code>## </code></pre>
+<pre><code>## ── Training information</code></pre>
+<pre><code>## Training data contained 2342 data points and no incomplete rows.</code></pre>
+<pre><code>## </code></pre>
+<pre><code>## ── Operations</code></pre>
+<pre><code>## • Collapsing factor levels for: Neighborhood | Trained</code></pre>
+<pre><code>## • Dummy variables from: Neighborhood, Bldg_Type | Trained</code></pre>
+<pre><code>## • Interactions with: Gr_Liv_Area:(Bldg_Type_TwoFmCon + Bldg_Type_Duplex +
+##   Bldg_Type_Twnhs + Bldg_Type_TwnhsE) | Trained</code></pre>
+<pre><code>## • Natural splines on: Latitude, Longitude | Trained</code></pre>
+<pre class="r"><code>get_model &lt;- function(x) {
+  extract_fit_parsnip(x) %&gt;% tidy()
+}</code></pre>
+<pre class="r"><code>get_model(lm_fit)</code></pre>
+<pre><code>## # A tibble: 73 × 5
+##    term                             estimate  std.error statistic   p.value
+##    &lt;chr&gt;                               &lt;dbl&gt;      &lt;dbl&gt;     &lt;dbl&gt;     &lt;dbl&gt;
+##  1 (Intercept)                      1.54     0.298         5.16   2.61e-  7
+##  2 Gr_Liv_Area                      0.000163 0.00000446   36.4    2.81e-229
+##  3 Year_Built                       0.00177  0.000140     12.6    1.93e- 35
+##  4 Neighborhood_College_Creek       0.00125  0.0350        0.0357 9.72e-  1
+##  5 Neighborhood_Old_Town           -0.0718   0.0129       -5.55   3.18e-  8
+##  6 Neighborhood_Edwards            -0.0957   0.0293       -3.27   1.09e-  3
+##  7 Neighborhood_Somerset            0.0944   0.0199        4.74   2.31e-  6
+##  8 Neighborhood_Northridge_Heights  0.158    0.0363        4.36   1.37e-  5
+##  9 Neighborhood_Gilbert             0.0285   0.0330        0.864  3.88e-  1
+## 10 Neighborhood_Sawyer             -0.0967   0.0275       -3.52   4.36e-  4
+## # ℹ 63 more rows</code></pre>
+<pre class="r"><code>ctrl &lt;- control_resamples(extract = get_model)
+
+lm_res &lt;- lm_wflow %&gt;%  fit_resamples(resamples = ames_folds, control = ctrl)
+lm_res</code></pre>
+<pre><code>## # Resampling results
+## # 10-fold cross-validation 
+## # A tibble: 10 × 5
+##    splits             id     .metrics         .notes           .extracts       
+##    &lt;list&gt;             &lt;chr&gt;  &lt;list&gt;           &lt;list&gt;           &lt;list&gt;          
+##  1 &lt;split [2107/235]&gt; Fold01 &lt;tibble [2 × 4]&gt; &lt;tibble [0 × 3]&gt; &lt;tibble [1 × 2]&gt;
+##  2 &lt;split [2107/235]&gt; Fold02 &lt;tibble [2 × 4]&gt; &lt;tibble [0 × 3]&gt; &lt;tibble [1 × 2]&gt;
+##  3 &lt;split [2108/234]&gt; Fold03 &lt;tibble [2 × 4]&gt; &lt;tibble [0 × 3]&gt; &lt;tibble [1 × 2]&gt;
+##  4 &lt;split [2108/234]&gt; Fold04 &lt;tibble [2 × 4]&gt; &lt;tibble [0 × 3]&gt; &lt;tibble [1 × 2]&gt;
+##  5 &lt;split [2108/234]&gt; Fold05 &lt;tibble [2 × 4]&gt; &lt;tibble [0 × 3]&gt; &lt;tibble [1 × 2]&gt;
+##  6 &lt;split [2108/234]&gt; Fold06 &lt;tibble [2 × 4]&gt; &lt;tibble [0 × 3]&gt; &lt;tibble [1 × 2]&gt;
+##  7 &lt;split [2108/234]&gt; Fold07 &lt;tibble [2 × 4]&gt; &lt;tibble [0 × 3]&gt; &lt;tibble [1 × 2]&gt;
+##  8 &lt;split [2108/234]&gt; Fold08 &lt;tibble [2 × 4]&gt; &lt;tibble [0 × 3]&gt; &lt;tibble [1 × 2]&gt;
+##  9 &lt;split [2108/234]&gt; Fold09 &lt;tibble [2 × 4]&gt; &lt;tibble [0 × 3]&gt; &lt;tibble [1 × 2]&gt;
+## 10 &lt;split [2108/234]&gt; Fold10 &lt;tibble [2 × 4]&gt; &lt;tibble [0 × 3]&gt; &lt;tibble [1 × 2]&gt;</code></pre>
+<pre class="r"><code>lm_res$.extracts[[1]]</code></pre>
+<pre><code>## # A tibble: 1 × 2
+##   .extracts         .config             
+##   &lt;list&gt;            &lt;chr&gt;               
+## 1 &lt;tibble [73 × 5]&gt; Preprocessor1_Model1</code></pre>
+<pre class="r"><code># To get the results
+lm_res$.extracts[[1]][[1]]</code></pre>
+<pre><code>## [[1]]
+## # A tibble: 73 × 5
+##    term                             estimate  std.error statistic   p.value
+##    &lt;chr&gt;                               &lt;dbl&gt;      &lt;dbl&gt;     &lt;dbl&gt;     &lt;dbl&gt;
+##  1 (Intercept)                      1.48     0.320         4.62   4.11e-  6
+##  2 Gr_Liv_Area                      0.000158 0.00000476   33.2    9.72e-194
+##  3 Year_Built                       0.00180  0.000149     12.1    1.57e- 32
+##  4 Neighborhood_College_Creek      -0.00163  0.0373       -0.0438 9.65e-  1
+##  5 Neighborhood_Old_Town           -0.0757   0.0138       -5.47   4.92e-  8
+##  6 Neighborhood_Edwards            -0.109    0.0310       -3.53   4.21e-  4
+##  7 Neighborhood_Somerset            0.0832   0.0217        3.83   1.33e-  4
+##  8 Neighborhood_Northridge_Heights  0.163    0.0401        4.06   5.19e-  5
+##  9 Neighborhood_Gilbert             0.0304   0.0367        0.827  4.08e-  1
+## 10 Neighborhood_Sawyer             -0.113    0.0291       -3.88   1.07e-  4
+## # ℹ 63 more rows</code></pre>
+<pre class="r"><code>all_coef &lt;- map_dfr(lm_res$.extracts, ~ .x[[1]][[1]])
+# Show the replicates for a single predictor:
+filter(all_coef, term == &quot;Year_Built&quot;)</code></pre>
+<pre><code>## # A tibble: 10 × 5
+##    term       estimate std.error statistic  p.value
+##    &lt;chr&gt;         &lt;dbl&gt;     &lt;dbl&gt;     &lt;dbl&gt;    &lt;dbl&gt;
+##  1 Year_Built  0.00180  0.000149      12.1 1.57e-32
+##  2 Year_Built  0.00180  0.000151      12.0 6.45e-32
+##  3 Year_Built  0.00185  0.000150      12.3 1.00e-33
+##  4 Year_Built  0.00183  0.000147      12.5 1.90e-34
+##  5 Year_Built  0.00184  0.000150      12.2 2.47e-33
+##  6 Year_Built  0.00180  0.000150      12.0 3.35e-32
+##  7 Year_Built  0.00179  0.000149      12.0 3.52e-32
+##  8 Year_Built  0.00185  0.000145      12.7 1.47e-35
+##  9 Year_Built  0.00158  0.000146      10.8 2.02e-26
+## 10 Year_Built  0.00181  0.000148      12.2 3.02e-33</code></pre>
+</div>
+<div id="chapter-summary" class="section level2">
+<h2>10.6 CHAPTER SUMMARY</h2>
+<pre class="r"><code>library(tidymodels)
+data(ames)
+ames &lt;- mutate(ames, Sale_Price = log10(Sale_Price))
+
+set.seed(502)
+ames_split &lt;- initial_split(ames, prop = 0.80, strata = Sale_Price)
+ames_train &lt;- training(ames_split)
+ames_test  &lt;-  testing(ames_split)
+
+ames_rec &lt;- 
+  recipe(Sale_Price ~ Neighborhood + Gr_Liv_Area + Year_Built + Bldg_Type + 
+           Latitude + Longitude, data = ames_train) %&gt;%
+  step_log(Gr_Liv_Area, base = 10) %&gt;% 
+  step_other(Neighborhood, threshold = 0.01) %&gt;% 
+  step_dummy(all_nominal_predictors()) %&gt;% 
+  step_interact( ~ Gr_Liv_Area:starts_with(&quot;Bldg_Type_&quot;) ) %&gt;% 
+  step_ns(Latitude, Longitude, deg_free = 20)
+
+lm_model &lt;- linear_reg() %&gt;% set_engine(&quot;lm&quot;)
+
+lm_wflow &lt;- 
+  workflow() %&gt;% 
+  add_model(lm_model) %&gt;% 
+  add_recipe(ames_rec)
+
+lm_fit &lt;- fit(lm_wflow, ames_train)
+
+rf_model &lt;- 
+  rand_forest(trees = 1000) %&gt;% 
+  set_engine(&quot;ranger&quot;) %&gt;% 
+  set_mode(&quot;regression&quot;)
+
+rf_wflow &lt;- 
+  workflow() %&gt;% 
+  add_formula(
+    Sale_Price ~ Neighborhood + Gr_Liv_Area + Year_Built + Bldg_Type + 
+      Latitude + Longitude) %&gt;% 
+  add_model(rf_model) 
+
+set.seed(1001)
+ames_folds &lt;- vfold_cv(ames_train, v = 10)
+
+keep_pred &lt;- control_resamples(save_pred = TRUE, save_workflow = TRUE)
+
+set.seed(1003)
+rf_res &lt;- rf_wflow %&gt;% fit_resamples(resamples = ames_folds, control = keep_pred)</code></pre>
 </div>
 </div>
 

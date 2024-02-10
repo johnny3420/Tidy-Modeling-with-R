@@ -1,7 +1,13 @@
+---
+output: 
+  html_document: 
+    keep_md: yes
+---
 # 11 Comparing Models with Resampling
 ## 11.1 CREATING MULTIPLE MODELS WITH WORKFLOW SETS
 
 ```{r}
+library(tidyverse)
 library(tidymodels)
 tidymodels_prefer()
 
