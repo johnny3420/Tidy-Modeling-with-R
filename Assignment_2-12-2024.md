@@ -16,10 +16,10 @@ library(tidyverse)
 
 ```
 ## ── Attaching core tidyverse packages ──────────────────────── tidyverse 2.0.0 ──
-## ✔ dplyr     1.1.4     ✔ readr     2.1.4
-## ✔ forcats   1.0.0     ✔ stringr   1.5.1
+## ✔ dplyr     1.1.2     ✔ readr     2.1.4
+## ✔ forcats   1.0.0     ✔ stringr   1.5.0
 ## ✔ ggplot2   3.4.4     ✔ tibble    3.2.1
-## ✔ lubridate 1.9.3     ✔ tidyr     1.3.0
+## ✔ lubridate 1.9.2     ✔ tidyr     1.3.0
 ## ✔ purrr     1.0.2     
 ## ── Conflicts ────────────────────────────────────────── tidyverse_conflicts() ──
 ## ✖ dplyr::filter() masks stats::filter()
@@ -46,7 +46,7 @@ library(tidymodels)
 ## ✖ dplyr::lag()      masks stats::lag()
 ## ✖ yardstick::spec() masks readr::spec()
 ## ✖ recipes::step()   masks stats::step()
-## • Search for functions across packages at https://www.tidymodels.org/find/
+## • Use suppressPackageStartupMessages() to eliminate package startup messages
 ```
 
 ```r
@@ -231,7 +231,7 @@ chicago_rec
 ```
 
 ```
-## • Centering and scaling for: has_role("station") and has_role("weather")
+## • Centering and scaling for: has_role("station"), has_role("weather")
 ```
 
 ```
@@ -390,8 +390,34 @@ base_rec
 ```
 
 ```
-## • Centering and scaling for: has_role("station") and has_role("weather")
+## • Centering and scaling for: has_role("station"), has_role("weather")
 ```
+
+
+```r
+# See if base, just the weekend predictor is what I actually have
+lm_wflow <- 
+  workflow() %>% 
+  add_model(lm_model) %>% 
+  add_recipe(base_rec)
+
+lm_fit <- fit(lm_wflow, chicago_train)
+
+tidy(lm_fit) %>% arrange(p.value)
+```
+
+```
+## # A tibble: 2 × 5
+##   term        estimate std.error statistic p.value
+##   <chr>          <dbl>     <dbl>     <dbl>   <dbl>
+## 1 (Intercept)     4.41    0.0826      53.4       0
+## 2 WeekendTRUE    12.9     0.0978     132.        0
+```
+
+```r
+# Yes only the weekend predictor was used
+```
+
 
 
 ```r
@@ -426,6 +452,34 @@ preproc <- list(
   six = rec_6
 )
 ```
+
+
+```r
+# Another sanity check on model 3
+lm_wflow <- 
+  workflow() %>% 
+  add_model(lm_model) %>% 
+  add_recipe(rec_3)
+
+lm_fit <- fit(lm_wflow, chicago_train)
+
+tidy(lm_fit) %>% arrange(p.value)
+```
+
+```
+## # A tibble: 4 × 5
+##   term        estimate std.error statistic   p.value
+##   <chr>          <dbl>     <dbl>     <dbl>     <dbl>
+## 1 (Intercept)    7.78     0.140       55.5 0        
+## 2 WeekendTRUE    8.19     0.189       43.4 0        
+## 3 station_PC1    0.555    0.0196      28.3 1.15e-162
+## 4 weather_PC1    0.245    0.0187      13.1 1.62e- 38
+```
+
+```r
+# Works as intended
+```
+
 
 
 ```r
@@ -476,28 +530,34 @@ There were issues with some computations   A: x1
 
 There were issues with some computations   A: x2
 
+There were issues with some computations   A: x3
+
 There were issues with some computations   A: x4
 
 There were issues with some computations   A: x5
 
 There were issues with some computations   A: x6
 
+There were issues with some computations   A: x7
+
 There were issues with some computations   A: x8
 
 There were issues with some computations   A: x9
 
 There were issues with some computations   A: x10
-## ✔ 1 of 6 resampling: one_lm (1.6s)
+
+There were issues with some computations   A: x10
+## ✔ 1 of 6 resampling: one_lm (3.2s)
 ## i 2 of 6 resampling: two_lm
-## ✔ 2 of 6 resampling: two_lm (901ms)
+## ✔ 2 of 6 resampling: two_lm (2.4s)
 ## i 3 of 6 resampling: three_lm
-## ✔ 3 of 6 resampling: three_lm (911ms)
+## ✔ 3 of 6 resampling: three_lm (1.9s)
 ## i 4 of 6 resampling: four_lm
-## ✔ 4 of 6 resampling: four_lm (741ms)
+## ✔ 4 of 6 resampling: four_lm (1.5s)
 ## i 5 of 6 resampling: five_lm
-## ✔ 5 of 6 resampling: five_lm (760ms)
+## ✔ 5 of 6 resampling: five_lm (1.5s)
 ## i 6 of 6 resampling: six_lm
-## ✔ 6 of 6 resampling: six_lm (571ms)
+## ✔ 6 of 6 resampling: six_lm (1.2s)
 ```
 
 ```r
@@ -542,7 +602,7 @@ autoplot(lm_models, metric = "rsq") +
   theme(legend.position = "none")
 ```
 
-![](Assignment_2-12-2024_files/figure-html/unnamed-chunk-17-1.png)<!-- -->
+![](Assignment_2-12-2024_files/figure-html/unnamed-chunk-19-1.png)<!-- -->
 
 
 ```r
@@ -579,7 +639,7 @@ rsq_indiv_estimates %>%
   theme(legend.position = "none")
 ```
 
-![](Assignment_2-12-2024_files/figure-html/unnamed-chunk-19-1.png)<!-- -->
+![](Assignment_2-12-2024_files/figure-html/unnamed-chunk-21-1.png)<!-- -->
 
 
 ```r
@@ -603,7 +663,7 @@ library(rstanarm)
 ```
 
 ```
-## This is rstanarm version 2.32.1
+## This is rstanarm version 2.26.1
 ```
 
 ```
@@ -638,8 +698,8 @@ rsq_anova <-
 ## 
 ## SAMPLING FOR MODEL 'continuous' NOW (CHAIN 1).
 ## Chain 1: 
-## Chain 1: Gradient evaluation took 7e-05 seconds
-## Chain 1: 1000 transitions using 10 leapfrog steps per transition would take 0.7 seconds.
+## Chain 1: Gradient evaluation took 0.001939 seconds
+## Chain 1: 1000 transitions using 10 leapfrog steps per transition would take 19.39 seconds.
 ## Chain 1: Adjust your expectations accordingly!
 ## Chain 1: 
 ## Chain 1: 
@@ -656,15 +716,15 @@ rsq_anova <-
 ## Chain 1: Iteration: 4500 / 5000 [ 90%]  (Sampling)
 ## Chain 1: Iteration: 5000 / 5000 [100%]  (Sampling)
 ## Chain 1: 
-## Chain 1:  Elapsed Time: 6.221 seconds (Warm-up)
-## Chain 1:                4.189 seconds (Sampling)
-## Chain 1:                10.41 seconds (Total)
+## Chain 1:  Elapsed Time: 17.062 seconds (Warm-up)
+## Chain 1:                16.367 seconds (Sampling)
+## Chain 1:                33.429 seconds (Total)
 ## Chain 1: 
 ## 
 ## SAMPLING FOR MODEL 'continuous' NOW (CHAIN 2).
 ## Chain 2: 
-## Chain 2: Gradient evaluation took 2.3e-05 seconds
-## Chain 2: 1000 transitions using 10 leapfrog steps per transition would take 0.23 seconds.
+## Chain 2: Gradient evaluation took 5.8e-05 seconds
+## Chain 2: 1000 transitions using 10 leapfrog steps per transition would take 0.58 seconds.
 ## Chain 2: Adjust your expectations accordingly!
 ## Chain 2: 
 ## Chain 2: 
@@ -681,15 +741,15 @@ rsq_anova <-
 ## Chain 2: Iteration: 4500 / 5000 [ 90%]  (Sampling)
 ## Chain 2: Iteration: 5000 / 5000 [100%]  (Sampling)
 ## Chain 2: 
-## Chain 2:  Elapsed Time: 5.373 seconds (Warm-up)
-## Chain 2:                4.407 seconds (Sampling)
-## Chain 2:                9.78 seconds (Total)
+## Chain 2:  Elapsed Time: 20.484 seconds (Warm-up)
+## Chain 2:                13.237 seconds (Sampling)
+## Chain 2:                33.721 seconds (Total)
 ## Chain 2: 
 ## 
 ## SAMPLING FOR MODEL 'continuous' NOW (CHAIN 3).
 ## Chain 3: 
-## Chain 3: Gradient evaluation took 2.3e-05 seconds
-## Chain 3: 1000 transitions using 10 leapfrog steps per transition would take 0.23 seconds.
+## Chain 3: Gradient evaluation took 8.4e-05 seconds
+## Chain 3: 1000 transitions using 10 leapfrog steps per transition would take 0.84 seconds.
 ## Chain 3: Adjust your expectations accordingly!
 ## Chain 3: 
 ## Chain 3: 
@@ -706,15 +766,15 @@ rsq_anova <-
 ## Chain 3: Iteration: 4500 / 5000 [ 90%]  (Sampling)
 ## Chain 3: Iteration: 5000 / 5000 [100%]  (Sampling)
 ## Chain 3: 
-## Chain 3:  Elapsed Time: 5.795 seconds (Warm-up)
-## Chain 3:                4.328 seconds (Sampling)
-## Chain 3:                10.123 seconds (Total)
+## Chain 3:  Elapsed Time: 19.057 seconds (Warm-up)
+## Chain 3:                12.924 seconds (Sampling)
+## Chain 3:                31.981 seconds (Total)
 ## Chain 3: 
 ## 
 ## SAMPLING FOR MODEL 'continuous' NOW (CHAIN 4).
 ## Chain 4: 
-## Chain 4: Gradient evaluation took 2.2e-05 seconds
-## Chain 4: 1000 transitions using 10 leapfrog steps per transition would take 0.22 seconds.
+## Chain 4: Gradient evaluation took 9.8e-05 seconds
+## Chain 4: 1000 transitions using 10 leapfrog steps per transition would take 0.98 seconds.
 ## Chain 4: Adjust your expectations accordingly!
 ## Chain 4: 
 ## Chain 4: 
@@ -731,9 +791,9 @@ rsq_anova <-
 ## Chain 4: Iteration: 4500 / 5000 [ 90%]  (Sampling)
 ## Chain 4: Iteration: 5000 / 5000 [100%]  (Sampling)
 ## Chain 4: 
-## Chain 4:  Elapsed Time: 5.865 seconds (Warm-up)
-## Chain 4:                3.767 seconds (Sampling)
-## Chain 4:                9.632 seconds (Total)
+## Chain 4:  Elapsed Time: 16.901 seconds (Warm-up)
+## Chain 4:                12.524 seconds (Sampling)
+## Chain 4:                29.425 seconds (Total)
 ## Chain 4:
 ```
 
@@ -752,7 +812,7 @@ glimpse(model_post)
 ## Rows: 60,000
 ## Columns: 2
 ## $ model     <chr> "one_lm", "two_lm", "three_lm", "four_lm", "five_lm", "six_l…
-## $ posterior <dbl> 0.8296529, 0.8304131, 0.8286411, 0.8003381, 0.8205618, 0.786…
+## $ posterior <dbl> 0.8350375, 0.8357445, 0.8362503, 0.8080247, 0.8316641, 0.794…
 ```
 
 
@@ -764,7 +824,7 @@ model_post %>%
   facet_wrap(~ model, ncol = 1)
 ```
 
-![](Assignment_2-12-2024_files/figure-html/unnamed-chunk-22-1.png)<!-- -->
+![](Assignment_2-12-2024_files/figure-html/unnamed-chunk-24-1.png)<!-- -->
 
 
 ```r
@@ -773,7 +833,7 @@ autoplot(rsq_anova) +
   theme(legend.position = "none")
 ```
 
-![](Assignment_2-12-2024_files/figure-html/unnamed-chunk-23-1.png)<!-- -->
+![](Assignment_2-12-2024_files/figure-html/unnamed-chunk-25-1.png)<!-- -->
 
 
 ```r
@@ -782,5 +842,5 @@ autoplot(rsq_anova, type = "ROPE", size = 0.02) +
   theme(legend.position = "none")
 ```
 
-![](Assignment_2-12-2024_files/figure-html/unnamed-chunk-24-1.png)<!-- -->
+![](Assignment_2-12-2024_files/figure-html/unnamed-chunk-26-1.png)<!-- -->
 
