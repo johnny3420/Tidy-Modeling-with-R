@@ -173,6 +173,20 @@ base_rec
 ```
 
 ```{r}
+# See if base, just the weekend predictor is what I actually have
+lm_wflow <- 
+  workflow() %>% 
+  add_model(lm_model) %>% 
+  add_recipe(base_rec)
+
+lm_fit <- fit(lm_wflow, chicago_train)
+
+tidy(lm_fit) %>% arrange(p.value)
+# Yes only the weekend predictor was used
+```
+
+
+```{r}
 # Build each recipe
 rec_1 <- base_rec %>%
   step_pca(has_role("station"), threshold = .75, prefix = "station_PC", id = "station_pca") %>%
@@ -204,6 +218,20 @@ preproc <- list(
   six = rec_6
 )
 ```
+
+```{r}
+# Another sanity check on model 3
+lm_wflow <- 
+  workflow() %>% 
+  add_model(lm_model) %>% 
+  add_recipe(rec_3)
+
+lm_fit <- fit(lm_wflow, chicago_train)
+
+tidy(lm_fit) %>% arrange(p.value)
+# Works as intended
+```
+
 
 ```{r}
 # make workflowset
