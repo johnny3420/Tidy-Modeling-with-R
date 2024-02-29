@@ -1,3 +1,8 @@
+---
+output: 
+  html_document: 
+    keep_md: yes
+---
 # 13 Grid Search
 ## 13.1 REGULAR AND NONREGULAR GRIDS
 
@@ -155,3 +160,172 @@ show_best(mlp_sfd_tune) %>% select(-.estimator)
 ```
 
 ## 13.3 FINALIZING THE MODEL
+
+```{r}
+select_best(mlp_reg_tune, metric = "roc_auc")
+```
+
+```{r}
+logistic_param <- 
+  tibble(
+    num_comp = 0,
+    epochs = 125,
+    hidden_units = 1,
+    penalty = 1
+  )
+
+final_mlp_wflow <- 
+  mlp_wflow %>% 
+  finalize_workflow(logistic_param)
+final_mlp_wflow
+```
+
+```{r}
+final_mlp_fit <- 
+  final_mlp_wflow %>% 
+  fit(cells)
+```
+
+## 13.4 TOOLS FOR CREATING TUNING SPECIFICATIONS
+
+```{r}
+data(ames)
+ames <- mutate(ames, Sale_Price = log10(Sale_Price))
+
+set.seed(502)
+ames_split <- initial_split(ames, prop = 0.80, strata = Sale_Price)
+ames_train <- training(ames_split)
+ames_test  <-  testing(ames_split)
+```
+
+
+```{r}
+library(usemodels)
+
+use_xgboost(Sale_Price ~ Neighborhood + Gr_Liv_Area + Year_Built + Bldg_Type + 
+              Latitude + Longitude, 
+            data = ames_train,
+            # Add comments explaining some of the code:
+            verbose = TRUE)
+```
+
+## 13.5 TOOLS FOR EFFICIENT GRID SEARCH
+### 13.5.1 SUBMODEL OPTIMIZATION
+
+```{r}
+c5_spec <- 
+  boost_tree(trees = tune()) %>% 
+  set_engine("C5.0") %>% 
+  set_mode("classification")
+
+set.seed(1307)
+c5_spec %>%
+  tune_grid(
+    class ~ .,
+    resamples = cell_folds,
+    grid = data.frame(trees = 1:100),
+    metrics = roc_res
+  )
+```
+
+### 13.5.2 PARALLEL PROCESSING
+
+```{r, eval = FALSE}
+for (rs in resamples) {
+  # Create analysis and assessment sets
+  # Preprocess data (e.g. formula or recipe)
+  for (mod in configurations) {
+    # Fit model {mod} to the {rs} analysis set
+    # Predict the {rs} assessment set
+  }
+}
+```
+
+```{r, eval = FALSE}
+all_tasks <- crossing(resamples, configurations)
+
+for (iter in all_tasks) {                           
+  # Create analysis and assessment sets for {iter}
+  # Preprocess data (e.g. formula or recipe)
+  # Fit model {iter} to the {iter} analysis set
+  # Predict the {iter} assessment set
+}
+```
+
+### 13.5.3 BENCHMARKING BOOSTED TREES
+### 13.5.4 ACCESS TO GLOBAL VARIABLES
+
+```{r}
+coef_penalty <- 0.1
+spec <- linear_reg(penalty = coef_penalty) %>% set_engine("glmnet")
+spec
+```
+
+```{r}
+spec$args$penalty
+```
+
+```{r}
+spec <- linear_reg(penalty = !!coef_penalty) %>% set_engine("glmnet")
+spec$args$penalty
+```
+
+```{r}
+mcmc_args <- list(chains = 3, iter = 1000, cores = 3)
+
+linear_reg() %>% set_engine("stan", !!!mcmc_args)
+```
+
+```{r}
+library(stringr)
+ch_2_vars <- str_subset(names(cells), "ch_2")
+ch_2_vars
+```
+
+```{r}
+# Still uses a reference to global data (~_~;)
+recipe(class ~ ., data = cells) %>% 
+  step_spatialsign(all_of(ch_2_vars))
+```
+
+```{r}
+# Inserts the values into the step ヽ(•‿•)ノ
+recipe(class ~ ., data = cells) %>% 
+  step_spatialsign(!!!ch_2_vars)
+```
+
+### 13.5.5 RACING METHODS
+
+```{r}
+library(finetune)
+
+set.seed(1308)
+mlp_sfd_race <-
+  mlp_wflow %>%
+  tune_race_anova(
+    cell_folds,
+    grid = 20,
+    param_info = mlp_param,
+    metrics = roc_res,
+    control = control_race(verbose_elim = TRUE)
+  )
+```
+
+```{r}
+show_best(mlp_sfd_race, n = 10)
+```
+
+## 13.6 CHAPTER SUMMARY
+
+```{r}
+library(tidymodels)
+
+data(cells)
+cells <- cells %>% select(-case)
+
+set.seed(1304)
+cell_folds <- vfold_cv(cells)
+
+roc_res <- metric_set(roc_auc)
+```
+
