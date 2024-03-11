@@ -1,0 +1,147 @@
+---
+output: 
+  html_document: 
+    keep_md: yes
+---
+# 14 Iterative Search
+
+```{r}
+library(tidymodels)
+library(tidyverse)
+library(doParallel)
+library(finetune)
+data(cells)
+cells <- cells %>% select(-case)
+
+set.seed(1304)
+cell_folds <- vfold_cv(cells)
+
+roc_res <- metric_set(roc_auc)
+```
+
+## 14.1 A SUPPORT VECTOR MACHINE MODEL
+
+```{r}
+tidymodels_prefer()
+
+svm_rec <- 
+  recipe(class ~ ., data = cells) %>%
+  step_YeoJohnson(all_numeric_predictors()) %>%
+  step_normalize(all_numeric_predictors())
+
+svm_spec <- 
+  svm_rbf(cost = tune(), rbf_sigma = tune()) %>% 
+  set_engine("kernlab") %>% 
+  set_mode("classification")
+
+svm_wflow <- 
+  workflow() %>% 
+  add_model(svm_spec) %>% 
+  add_recipe(svm_rec)
+```
+
+```{r}
+cost()
+```
+
+```{r}
+rbf_sigma()
+```
+
+```{r}
+svm_param <- 
+  svm_wflow %>% 
+  extract_parameter_set_dials() %>% 
+  update(rbf_sigma = rbf_sigma(c(-7, -1)))
+```
+
+```{r}
+set.seed(1401)
+start_grid <- 
+  svm_param %>% 
+  update(
+    cost = cost(c(-6, 1)),
+    rbf_sigma = rbf_sigma(c(-6, -4))
+  ) %>% 
+  grid_regular(levels = 2)
+
+set.seed(1402)
+svm_initial <- 
+  svm_wflow %>% 
+  tune_grid(resamples = cell_folds, grid = start_grid, metrics = roc_res)
+
+collect_metrics(svm_initial)
+```
+
+## 14.2 BAYESIAN OPTIMIZATION
+### 14.2.1 A GAUSSIAN PROCESS MODEL
+### 14.2.2 ACQUISITION FUNCTIONS
+### 14.2.3 THE `tune_bayes()` FUNCTION
+
+```{r, message=FALSE}
+cl <- makePSOCKcluster(6)
+registerDoParallel(cl)
+
+ctrl <- control_bayes(verbose = TRUE)
+
+set.seed(1403)
+svm_bo <-
+  svm_wflow %>%
+  tune_bayes(
+    resamples = cell_folds,
+    metrics = roc_res,
+    initial = svm_initial,
+    param_info = svm_param,
+    iter = 25,
+    control = ctrl
+  )
+
+stopCluster(cl)
+```
+
+```{r}
+show_best(svm_bo)
+```
+
+```{r}
+autoplot(svm_bo, type = "performance")
+```
+
+```{r}
+autoplot(svm_bo, type = "parameters")
+```
+
+## 14.3 SIMULATED ANNEALING
+### 14.3.1 SIMULATED ANNEALING SEARCH PROCESS
+### 14.3.2 THE tune_sim_anneal() FUNCTION
+
+```{r, message=FALSE}
+cl <- makePSOCKcluster(6)
+registerDoParallel(cl)
+
+ctrl_sa <- control_sim_anneal(verbose = TRUE, no_improve = 10L)
+
+set.seed(1404)
+svm_sa <-
+  svm_wflow %>%
+  tune_sim_anneal(
+    resamples = cell_folds,
+    metrics = roc_res,
+    initial = svm_initial,
+    param_info = svm_param,
+    iter = 50,
+    control = ctrl_sa
+  )
+
+stopCluster(cl)
+```
+
+```{r}
+autoplot(svm_sa, type = "performance")
+```
+
+```{r}
+autoplot(svm_sa, type = "parameters")
+```
+
+## 14.4 CHAPTER SUMMARY
