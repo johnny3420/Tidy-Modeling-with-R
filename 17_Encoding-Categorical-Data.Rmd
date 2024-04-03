@@ -1,0 +1,148 @@
+---
+output: 
+  html_document: 
+    keep_md: yes
+---
+
+# 17 Encoding Categorical Data
+
+```{r}
+library(tidyverse)
+library(tidymodels)
+data(ames)
+ames <- mutate(ames, Sale_Price = log10(Sale_Price))
+
+set.seed(502)
+ames_split <- initial_split(ames, prop = 0.80, strata = Sale_Price)
+ames_train <- training(ames_split)
+ames_test  <-  testing(ames_split)
+```
+
+## 17.1 IS AN ENCODING NECESSARY?
+## 17.2 ENCODING ORDINAL PREDICTORS
+## 17.3 USING THE OUTCOME FOR ENCODING PREDICTORS
+
+```{r}
+ames_train %>%
+  group_by(Neighborhood) %>%
+  summarize(mean = mean(Sale_Price),
+            std_err = sd(Sale_Price) / sqrt(length(Sale_Price))) %>% 
+  ggplot(aes(y = reorder(Neighborhood, mean), x = mean)) + 
+  geom_point() +
+  geom_errorbar(aes(xmin = mean - 1.64 * std_err, xmax = mean + 1.64 * std_err)) +
+  labs(y = NULL, x = "Price (mean, log scale)")
+```
+
+```{r}
+library(embed)
+
+ames_glm <- 
+  recipe(Sale_Price ~ Neighborhood + Gr_Liv_Area + Year_Built + Bldg_Type + 
+           Latitude + Longitude, data = ames_train) %>%
+  step_log(Gr_Liv_Area, base = 10) %>% 
+  step_lencode_glm(Neighborhood, outcome = vars(Sale_Price)) %>%
+  step_dummy(all_nominal_predictors()) %>% 
+  step_interact( ~ Gr_Liv_Area:starts_with("Bldg_Type_") ) %>% 
+  step_ns(Latitude, Longitude, deg_free = 20)
+
+ames_glm
+```
+
+```{r}
+glm_estimates <-
+  prep(ames_glm) %>%
+  tidy(number = 2)
+
+glm_estimates
+```
+
+```{r}
+glm_estimates %>%
+  filter(level == "..new")
+```
+
+### 17.3.1 EFFECT ENCODINGS WITH PARTIAL POOLING
+
+```{r}
+ames_mixed <- 
+  recipe(Sale_Price ~ Neighborhood + Gr_Liv_Area + Year_Built + Bldg_Type + 
+           Latitude + Longitude, data = ames_train) %>%
+  step_log(Gr_Liv_Area, base = 10) %>% 
+  step_lencode_mixed(Neighborhood, outcome = vars(Sale_Price)) %>%
+  step_dummy(all_nominal_predictors()) %>% 
+  step_interact( ~ Gr_Liv_Area:starts_with("Bldg_Type_") ) %>% 
+  step_ns(Latitude, Longitude, deg_free = 20)
+
+ames_mixed
+```
+
+```{r}
+mixed_estimates <-
+  prep(ames_mixed) %>%
+  tidy(number = 2)
+
+mixed_estimates
+```
+
+```{r}
+mixed_estimates %>%
+  filter(level == "..new")
+```
+
+```{r}
+glm_estimates %>%
+  rename(`no pooling` = value) %>%
+  left_join(
+    mixed_estimates %>%
+      rename(`partial pooling` = value), by = "level"
+  ) %>%
+  left_join(
+    ames_train %>% 
+      count(Neighborhood) %>% 
+      mutate(level = as.character(Neighborhood))
+  ) %>%
+  ggplot(aes(`no pooling`, `partial pooling`, size = sqrt(n))) +
+  geom_abline(color = "gray50", lty = 2) +
+  geom_point(alpha = 0.7) +
+  coord_fixed()
+```
+
+## 17.4 FEATURE HASHING
+
+```{r}
+library(rlang)
+
+ames_hashed <-
+  ames_train %>%
+  mutate(Hash = map_chr(Neighborhood, hash))
+
+ames_hashed %>%
+  select(Neighborhood, Hash)
+```
+
+```{r}
+ames_hashed %>%
+  ## first make a smaller hash for integers that R can handle
+  mutate(Hash = strtoi(substr(Hash, 26, 32), base = 16L),  
+         ## now take the modulo
+         Hash = Hash %% 16) %>%
+  select(Neighborhood, Hash)
+```
+
+```{r}
+library(textrecipes)
+ames_hash <- 
+  recipe(Sale_Price ~ Neighborhood + Gr_Liv_Area + Year_Built + Bldg_Type + 
+           Latitude + Longitude, data = ames_train) %>%
+  step_log(Gr_Liv_Area, base = 10) %>% 
+  step_dummy_hash(Neighborhood, signed = FALSE, num_terms = 16L) %>%
+  step_dummy(all_nominal_predictors()) %>% 
+  step_interact( ~ Gr_Liv_Area:starts_with("Bldg_Type_") ) %>% 
+  step_ns(Latitude, Longitude, deg_free = 20)
+
+ames_hash
+```
+
+## 17.5 MORE ENCODING OPTIONS
+
+## 17.6 CHAPTER SUMMARY
