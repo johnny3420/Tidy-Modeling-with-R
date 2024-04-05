@@ -6,19 +6,89 @@ output:
 
 # 18 Explaining Models and Predictions
 
-```{r}
+
+```r
 library(tidyverse)
+```
+
+```
+## Warning in system("timedatectl", intern = TRUE): 명령 'timedatectl'의 실행으로
+## 상태 1가 되었습니다
+```
+
+```
+## ── Attaching core tidyverse packages ──────────────────────── tidyverse 2.0.0 ──
+## ✔ dplyr     1.1.4     ✔ readr     2.1.5
+## ✔ forcats   1.0.0     ✔ stringr   1.5.1
+## ✔ ggplot2   3.5.0     ✔ tibble    3.2.1
+## ✔ lubridate 1.9.3     ✔ tidyr     1.3.1
+## ✔ purrr     1.0.2     
+## ── Conflicts ────────────────────────────────────────── tidyverse_conflicts() ──
+## ✖ dplyr::filter() masks stats::filter()
+## ✖ dplyr::lag()    masks stats::lag()
+## ℹ Use the conflicted package (<http://conflicted.r-lib.org/>) to force all conflicts to become errors
+```
+
+```r
 library(tidymodels)
+```
+
+```
+## ── Attaching packages ────────────────────────────────────── tidymodels 1.2.0 ──
+## ✔ broom        1.0.5      ✔ rsample      1.2.1 
+## ✔ dials        1.2.1      ✔ tune         1.2.0 
+## ✔ infer        1.0.7      ✔ workflows    1.1.4 
+## ✔ modeldata    1.3.0      ✔ workflowsets 1.1.0 
+## ✔ parsnip      1.2.1      ✔ yardstick    1.3.1 
+## ✔ recipes      1.0.10     
+## ── Conflicts ───────────────────────────────────────── tidymodels_conflicts() ──
+## ✖ scales::discard() masks purrr::discard()
+## ✖ dplyr::filter()   masks stats::filter()
+## ✖ recipes::fixed()  masks stringr::fixed()
+## ✖ dplyr::lag()      masks stats::lag()
+## ✖ yardstick::spec() masks readr::spec()
+## ✖ recipes::step()   masks stats::step()
+## • Dig deeper into tidy modeling with R at https://www.tmwr.org
+```
+
+```r
 library(beans)
 library(bestNormalize)
 library(patchwork)
 library(baguette)
 library(discrim)
+```
+
+```
+## 
+## 다음의 패키지를 부착합니다: 'discrim'
+## 
+## The following object is masked from 'package:dials':
+## 
+##     smoothness
+```
+
+```r
 library(ggforce)
 library(learntidymodels)
 library(embed)
 library(doParallel)
+```
 
+```
+## 필요한 패키지를 로딩중입니다: foreach
+## 
+## 다음의 패키지를 부착합니다: 'foreach'
+## 
+## The following objects are masked from 'package:purrr':
+## 
+##     accumulate, when
+## 
+## 필요한 패키지를 로딩중입니다: iterators
+## 필요한 패키지를 로딩중입니다: parallel
+```
+
+```r
 #super speed
 cl <- makePSOCKcluster(40)
 registerDoParallel(cl)
@@ -65,8 +135,34 @@ rf_fit <- rf_wflow %>% fit(data = ames_train)
 ## 18.1 SOFTWARE FOR MODEL EXPLANATIONS
 
 
-```{r}
+
+```r
 library(DALEXtra)
+```
+
+```
+## 필요한 패키지를 로딩중입니다: DALEX
+```
+
+```
+## Welcome to DALEX (version: 2.4.3).
+## Find examples and detailed introduction at: http://ema.drwhy.ai/
+## Additional features will be available after installation of: ggpubr.
+## Use 'install_dependencies()' to get all suggested dependencies
+```
+
+```
+## 
+## 다음의 패키지를 부착합니다: 'DALEX'
+```
+
+```
+## The following object is masked from 'package:dplyr':
+## 
+##     explain
+```
+
+```r
 vip_features <- c("Neighborhood", "Gr_Liv_Area", "Year_Built", 
                   "Bldg_Type", "Latitude", "Longitude")
 
@@ -95,22 +191,57 @@ explainer_rf <-
 
 ## 18.2 LOCAL EXPLANATIONS
 
-```{r}
+
+```r
 duplex <- vip_train[120,]
 duplex
 ```
 
-```{r}
+```
+## # A tibble: 1 × 6
+##   Neighborhood Gr_Liv_Area Year_Built Bldg_Type Latitude Longitude
+##   <fct>              <int>      <int> <fct>        <dbl>     <dbl>
+## 1 North_Ames          1040       1949 Duplex        42.0     -93.6
+```
+
+
+```r
 lm_breakdown <- predict_parts(explainer = explainer_lm, new_observation = duplex)
 lm_breakdown
 ```
 
-```{r}
+```
+##                                              contribution
+## lm + interactions: intercept                        5.221
+## lm + interactions: Bldg_Type = Duplex              -0.075
+## lm + interactions: Gr_Liv_Area = 1040              -0.050
+## lm + interactions: Longitude = -93.608903          -0.041
+## lm + interactions: Year_Built = 1949               -0.040
+## lm + interactions: Latitude = 42.035841            -0.011
+## lm + interactions: Neighborhood = North_Ames       -0.001
+## lm + interactions: prediction                       5.003
+```
+
+
+```r
 rf_breakdown <- predict_parts(explainer = explainer_rf, new_observation = duplex)
 rf_breakdown
 ```
 
-```{r}
+```
+##                                          contribution
+## random forest: intercept                        5.221
+## random forest: Year_Built = 1949               -0.075
+## random forest: Gr_Liv_Area = 1040              -0.076
+## random forest: Bldg_Type = Duplex              -0.027
+## random forest: Longitude = -93.608903          -0.044
+## random forest: Latitude = 42.035841            -0.027
+## random forest: Neighborhood = North_Ames       -0.007
+## random forest: prediction                       4.965
+```
+
+
+```r
 predict_parts(
   explainer = explainer_rf, 
   new_observation = duplex,
@@ -118,7 +249,20 @@ predict_parts(
 )
 ```
 
-```{r}
+```
+##                                          contribution
+## random forest: intercept                        5.221
+## random forest: Bldg_Type = Duplex              -0.028
+## random forest: Gr_Liv_Area = 1040              -0.065
+## random forest: Longitude = -93.608903          -0.025
+## random forest: Year_Built = 1949               -0.104
+## random forest: Latitude = 42.035841            -0.027
+## random forest: Neighborhood = North_Ames       -0.007
+## random forest: prediction                       4.965
+```
+
+
+```r
 set.seed(1801)
 shap_duplex <- 
   predict_parts(
@@ -129,7 +273,8 @@ shap_duplex <-
   )
 ```
 
-```{r}
+
+```r
 library(forcats)
 shap_duplex %>%
   group_by(variable) %>%
@@ -146,12 +291,23 @@ shap_duplex %>%
   labs(y = NULL)
 ```
 
-```{r}
+![](18_Explaining-Models-and-Predictions_files/figure-html/unnamed-chunk-8-1.png)<!-- -->
+
+
+```r
 big_house <- vip_train[1269,]
 big_house
 ```
 
-```{r}
+```
+## # A tibble: 1 × 6
+##   Neighborhood Gr_Liv_Area Year_Built Bldg_Type Latitude Longitude
+##   <fct>              <int>      <int> <fct>        <dbl>     <dbl>
+## 1 Gilbert             2267       2002 OneFam        42.1     -93.6
+```
+
+
+```r
 set.seed(1802)
 shap_house <- 
   predict_parts(
@@ -162,7 +318,8 @@ shap_house <-
   )
 ```
 
-```{r}
+
+```r
 shap_house %>%
   group_by(variable) %>%
   mutate(mean_val = mean(contribution)) %>%
@@ -178,16 +335,20 @@ shap_house %>%
   labs(y = NULL)
 ```
 
+![](18_Explaining-Models-and-Predictions_files/figure-html/unnamed-chunk-11-1.png)<!-- -->
+
 ## 18.3 GLOBAL EXPLANATIONS
 
-```{r}
+
+```r
 set.seed(1803)
 vip_lm <- model_parts(explainer_lm, loss_function = loss_root_mean_square)
 set.seed(1804)
 vip_rf <- model_parts(explainer_rf, loss_function = loss_root_mean_square)
 ```
 
-```{r}
+
+```r
 ggplot_imp <- function(...) {
   obj <- list(...)
   metric_name <- attr(obj[[1]], "loss_name")
@@ -226,18 +387,23 @@ ggplot_imp <- function(...) {
 }
 ```
 
-```{r}
+
+```r
 ggplot_imp(vip_lm, vip_rf)
 ```
 
+![](18_Explaining-Models-and-Predictions_files/figure-html/unnamed-chunk-14-1.png)<!-- -->
+
 ## 18.4 BUILDING GLOBAL EXPLANATIONS FROM LOCAL EXPLANATIONS
 
-```{r}
+
+```r
 set.seed(1805)
 pdp_age <- model_profile(explainer_rf, N = 500, variables = "Year_Built")
 ```
 
-```{r}
+
+```r
 ggplot_pdp <- function(obj, x) {
   
   p <- 
@@ -260,19 +426,33 @@ ggplot_pdp <- function(obj, x) {
 }
 ```
 
-```{r}
+
+```r
 ggplot_pdp(pdp_age, Year_Built)  +
   labs(x = "Year built", 
        y = "Sale Price (log)", 
        color = NULL)
 ```
 
-```{r}
+![](18_Explaining-Models-and-Predictions_files/figure-html/unnamed-chunk-17-1.png)<!-- -->
+
+
+```r
 set.seed(1806)
 pdp_liv <- model_profile(explainer_rf, N = 1000, 
                          variables = "Gr_Liv_Area", 
                          groups = "Bldg_Type")
+```
 
+```
+## Warning in FUN(X[[i]], ...): Variable: < Gr_Liv_Area > has more than 201 unique
+## values and all of them will be used as variable splits in calculating variable
+## profiles. Use the `variable_splits` parameter to mannualy change this
+## behaviour. If you believe this warning to be a false positive, raise issue at
+## <https://github.com/ModelOriented/ingredients/issues>.
+```
+
+```r
 ggplot_pdp(pdp_liv, Gr_Liv_Area) +
   scale_x_log10() +
   scale_color_brewer(palette = "Dark2") +
@@ -281,7 +461,10 @@ ggplot_pdp(pdp_liv, Gr_Liv_Area) +
        color = NULL)
 ```
 
-```{r}
+![](18_Explaining-Models-and-Predictions_files/figure-html/unnamed-chunk-18-1.png)<!-- -->
+
+
+```r
 as_tibble(pdp_liv$agr_profiles) %>%
   mutate(Bldg_Type = stringr::str_remove(`_label_`, "random forest_")) %>%
   ggplot(aes(`_x_`, `_yhat_`, color = Bldg_Type)) +
@@ -297,11 +480,22 @@ as_tibble(pdp_liv$agr_profiles) %>%
        color = NULL)
 ```
 
+![](18_Explaining-Models-and-Predictions_files/figure-html/unnamed-chunk-19-1.png)<!-- -->
+
 ## 18.5 BACK TO BEANS!
 
-```{r}
+
+```r
 set.seed(1601)
 bean_split <- initial_validation_split(beans, strata = class, prop = c(0.75, 0.125))
+```
+
+```
+## Warning: Too little data to stratify.
+## • Resampling will be unstratified.
+```
+
+```r
 bean_train <- training(bean_split)
 bean_test <- testing(bean_split)
 bean_validation <- validation(bean_split)
@@ -369,7 +563,143 @@ bean_res <-
     metrics = metric_set(roc_auc),
     control = ctrl
   )
+```
 
+```
+## i	No tuning parameters. `fit_resamples()` will be attempted
+```
+
+```
+## i  1 of 15 resampling: basic_bayes
+```
+
+```
+## Registered S3 method overwritten by 'questionr':
+##   method            from 
+##   print.description DALEX
+```
+
+```
+## ✔  1 of 15 resampling: basic_bayes (46.2s)
+```
+
+```
+## i  2 of 15 tuning:     basic_fda
+```
+
+```
+## ✔  2 of 15 tuning:     basic_fda (7.4s)
+```
+
+```
+## i  3 of 15 tuning:     basic_rda
+```
+
+```
+## ✔  3 of 15 tuning:     basic_rda (3.8s)
+```
+
+```
+## i	No tuning parameters. `fit_resamples()` will be attempted
+```
+
+```
+## i  4 of 15 resampling: basic_bag
+```
+
+```
+## ✔  4 of 15 resampling: basic_bag (3.5s)
+```
+
+```
+## i  5 of 15 tuning:     basic_mlp
+```
+
+```
+## ✔  5 of 15 tuning:     basic_mlp (5.5s)
+```
+
+```
+## i  6 of 15 tuning:     pls_bayes
+```
+
+```
+## ✔  6 of 15 tuning:     pls_bayes (9.2s)
+```
+
+```
+## i  7 of 15 tuning:     pls_fda
+```
+
+```
+## ✔  7 of 15 tuning:     pls_fda (11.6s)
+```
+
+```
+## i  8 of 15 tuning:     pls_rda
+```
+
+```
+## ✔  8 of 15 tuning:     pls_rda (14.3s)
+```
+
+```
+## i  9 of 15 tuning:     pls_bag
+```
+
+```
+## ✔  9 of 15 tuning:     pls_bag (9.6s)
+```
+
+```
+## i 10 of 15 tuning:     pls_mlp
+```
+
+```
+## ✔ 10 of 15 tuning:     pls_mlp (18.2s)
+```
+
+```
+## i 11 of 15 tuning:     umap_bayes
+```
+
+```
+## ✔ 11 of 15 tuning:     umap_bayes (1m 21.9s)
+```
+
+```
+## i 12 of 15 tuning:     umap_fda
+```
+
+```
+## ✔ 12 of 15 tuning:     umap_fda (1m 19s)
+```
+
+```
+## i 13 of 15 tuning:     umap_rda
+```
+
+```
+## ✔ 13 of 15 tuning:     umap_rda (1m 16.9s)
+```
+
+```
+## i 14 of 15 tuning:     umap_bag
+```
+
+```
+## ✔ 14 of 15 tuning:     umap_bag (1m 17.4s)
+```
+
+```
+## i 15 of 15 tuning:     umap_mlp
+```
+
+```
+## ✔ 15 of 15 tuning:     umap_mlp (1m 25.6s)
+```
+
+```r
 rda_res <- 
   bean_res %>% 
   extract_workflow("pls_rda") %>% 
@@ -383,7 +713,8 @@ rda_res <-
 rda_wflow_fit <- extract_workflow(rda_res)
 ```
 
-```{r}
+
+```r
 set.seed(1807)
 vip_beans <- 
   explain_tidymodels(
@@ -396,12 +727,16 @@ vip_beans <-
   model_parts() 
 ```
 
-```{r}
+
+```r
 ggplot_imp(vip_beans)
 ```
 
+![](18_Explaining-Models-and-Predictions_files/figure-html/unnamed-chunk-22-1.png)<!-- -->
+
 ## 18.6 CHAPTER SUMMARY
 
-```{r}
+
+```r
 stopCluster(cl)
 ```
