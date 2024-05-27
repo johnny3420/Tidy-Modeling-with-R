@@ -1,0 +1,223 @@
+---
+output: 
+  html_document: 
+    keep_md: yes
+---
+
+# 21 Inferential Analysis
+
+```{r}
+library(tidyverse)
+library(tidymodels)
+library(doParallel)
+library(stacks)
+library(probably)
+library(patchwork)
+library(applicable)
+tidymodels_prefer()
+
+#super speed
+cl <- makePSOCKcluster(8)
+registerDoParallel(cl)
+```
+
+## 21.1 INFERENCE FOR COUNT DATA
+
+```{r}
+library(tidymodels)
+tidymodels_prefer()
+
+data("bioChemists", package = "pscl")
+
+ggplot(bioChemists, aes(x = art)) + 
+  geom_histogram(binwidth = 1, color = "white") + 
+  labs(x = "Number of articles within 3y of graduation")
+```
+
+## 21.2 COMPARISONS WITH TWO-SAMPLE TESTS
+
+```{r}
+bioChemists %>% 
+  group_by(fem) %>% 
+  summarize(counts = sum(art), n = length(art))
+```
+
+```{r}
+poisson.test(c(930, 619), T = 3)
+```
+```{r}
+poisson.test(c(930, 619)) %>% 
+  tidy()
+```
+
+```{r}
+library(infer)
+
+observed <- 
+  bioChemists %>%
+  specify(art ~ fem) %>%
+  calculate(stat = "diff in means", order = c("Men", "Women"))
+observed
+```
+
+```{r}
+set.seed(2101)
+bootstrapped <- 
+  bioChemists %>%
+  specify(art ~ fem)  %>%
+  generate(reps = 2000, type = "bootstrap") %>%
+  calculate(stat = "diff in means", order = c("Men", "Women"))
+bootstrapped
+```
+
+```{r}
+percentile_ci <- get_ci(bootstrapped)
+percentile_ci
+```
+
+```{r}
+visualize(bootstrapped) +
+    shade_confidence_interval(endpoints = percentile_ci)
+```
+
+```{r}
+set.seed(2102)
+permuted <- 
+  bioChemists %>%
+  specify(art ~ fem)  %>%
+  hypothesize(null = "independence") %>%
+  generate(reps = 2000, type = "permute") %>%
+  calculate(stat = "diff in means", order = c("Men", "Women"))
+permuted
+```
+
+```{r}
+visualize(permuted) +
+    shade_p_value(obs_stat = observed, direction = "two-sided")
+```
+
+```{r}
+permuted %>%
+  get_p_value(obs_stat = observed, direction = "two-sided")
+```
+
+## 21.3 LOG-LINEAR MODELS
+
+```{r}
+library(poissonreg)
+
+# default engine is 'glm'
+log_lin_spec <- poisson_reg()
+
+log_lin_fit <- 
+  log_lin_spec %>% 
+  fit(art ~ ., data = bioChemists)
+log_lin_fit
+```
+
+```{r}
+tidy(log_lin_fit, conf.int = TRUE, conf.level = 0.90)
+```
+
+```{r}
+set.seed(2103)
+glm_boot <- 
+  reg_intervals(art ~ ., data = bioChemists, model_fn = "glm", family = poisson)
+glm_boot
+```
+
+```{r}
+log_lin_reduced <- 
+  log_lin_spec %>% 
+  fit(art ~ ment + kid5 + fem + mar, data = bioChemists)
+
+anova(
+  extract_fit_engine(log_lin_reduced),
+  extract_fit_engine(log_lin_fit),
+  test = "LRT"
+) %>%
+  tidy()
+```
+
+## 21.4 A MORE COMPLEX MODEL
+
+```{r}
+zero_inflated_spec <- poisson_reg() %>% set_engine("zeroinfl")
+
+zero_inflated_fit <- 
+  zero_inflated_spec %>% 
+  fit(art ~ fem + mar + kid5 + ment | fem + mar + kid5 + phd + ment,
+      data = bioChemists)
+
+zero_inflated_fit
+```
+
+```{r, error = T}
+anova(
+  extract_fit_engine(zero_inflated_fit),
+  extract_fit_engine(log_lin_reduced),
+  test = "LRT"
+) %>%
+  tidy()
+```
+
+```{r}
+zero_inflated_fit %>% extract_fit_engine() %>% AIC()
+
+log_lin_reduced   %>% extract_fit_engine() %>% AIC()
+```
+
+```{r}
+zip_form <- art ~ fem + mar + kid5 + ment | fem + mar + kid5 + phd + ment
+glm_form <- art ~ fem + mar + kid5 + ment
+
+set.seed(2104)
+bootstrap_models <-
+  bootstraps(bioChemists, times = 2000, apparent = TRUE) %>%
+  mutate(
+    glm = map(splits, ~ fit(log_lin_spec,       glm_form, data = analysis(.x))),
+    zip = map(splits, ~ fit(zero_inflated_spec, zip_form, data = analysis(.x)))
+  )
+```
+
+```{r}
+bootstrap_models <-
+  bootstrap_models %>%
+  mutate(
+    glm_aic = map_dbl(glm, ~ extract_fit_engine(.x) %>% AIC()),
+    zip_aic = map_dbl(zip, ~ extract_fit_engine(.x) %>% AIC())
+  )
+mean(bootstrap_models$zip_aic < bootstrap_models$glm_aic)
+```
+
+```{r}
+bootstrap_models <-
+  bootstrap_models %>%
+  mutate(zero_coefs  = map(zip, ~ tidy(.x, type = "zero")))
+
+# One example:
+bootstrap_models$zero_coefs[[1]]
+```
+
+```{r}
+bootstrap_models %>% 
+  unnest(zero_coefs) %>% 
+  ggplot(aes(x = estimate)) +
+  geom_histogram(bins = 25, color = "white") + 
+  facet_wrap(~ term, scales = "free_x") + 
+  geom_vline(xintercept = 0, lty = 2, color = "gray70")
+```
+
+```{r}
+bootstrap_models %>% int_pctl(zero_coefs)
+
+bootstrap_models %>% int_t(zero_coefs)
+```
+
+## 21.5 MORE INFERENTIAL ANALYSIS
+
+## 21.6 CHAPTER SUMMARY
+
+```{r}
+stopCluster(cl)
+```
